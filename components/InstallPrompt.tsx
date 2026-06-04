@@ -36,7 +36,7 @@ export default function InstallPrompt() {
           {isIOS ? (
             <p className="text-gray-400 text-xs mt-1">
               Tap <strong className="text-gray-300">Share</strong> then{' '}
-              <strong className="text-gray-300">"Add to Home Screen"</strong> to install.
+              <strong className="text-gray-300">&ldquo;Add to Home Screen&rdquo;</strong> to install.
               Push notifications require the installed app.
             </p>
           ) : (
