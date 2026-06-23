@@ -24,6 +24,25 @@ Scrapes the entire One Piece Card Game catalog from `en.onepiece-cardgame.com`. 
 
 Both scripts download images, upload them to the `card-images` Supabase Storage bucket, and upsert metadata into the `cards` table. They're idempotent — safe to re-run anytime.
 
+### `npm run smoke-test`
+
+End-to-end backend test. Creates two real test users (Alice + Bob), signs them in with the public anon key, and walks every CRUD path the app uses:
+
+- Profile creation with `auth.uid()` default
+- Public/private binder visibility (RLS positive + negative cases)
+- Binder item insert / unique-print constraint
+- Cross-user RLS leak attempts (should all fail)
+- Wantlist add / public-readability
+- Matching query (Bob's wantlist ↔ Alice's public binders)
+
+Always cleans up the test users at the end (cascades all owned rows).
+
+Requires a populated `cards` table — run `seed:gundam` or `seed:onepiece` first.
+
+```bash
+NODE_TLS_REJECT_UNAUTHORIZED=0 npm run smoke-test
+```
+
 ### Flags (both scripts)
 
 | Flag | Purpose |
