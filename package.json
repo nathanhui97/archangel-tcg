@@ -1,29 +1,36 @@
 {
   "name": "archangel-tcg",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "main": "expo-router/entry",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "build:ios": "eas build --platform ios",
+    "build:android": "eas build --platform android"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.5.0",
+    "@react-native-async-storage/async-storage": "^1.23.1",
     "@supabase/supabase-js": "^2.45.0",
-    "next": "^15.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "expo": "~52.0.0",
+    "expo-constants": "~17.0.3",
+    "expo-image-picker": "~16.0.3",
+    "expo-linking": "~7.0.3",
+    "expo-location": "~18.0.4",
+    "expo-notifications": "~0.29.9",
+    "expo-router": "~4.0.17",
+    "expo-secure-store": "~14.0.0",
+    "expo-splash-screen": "~0.29.18",
+    "expo-status-bar": "~2.0.0",
+    "nativewind": "^4.1.23",
+    "react": "18.3.1",
+    "react-native": "0.76.5",
+    "react-native-url-polyfill": "^2.0.0",
+    "tailwindcss": "^3.4.0"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "autoprefixer": "^10.4.20",
-    "eslint": "^9",
-    "eslint-config-next": "^15.1.0",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "@babel/core": "^7.24.0",
+    "@types/react": "~18.3.12",
+    "typescript": "~5.3.3"
   }
 }

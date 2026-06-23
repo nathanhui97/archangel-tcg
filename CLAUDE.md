@@ -4,10 +4,20 @@ Full knowledge base: `doc/ai-agent-knowledge-base.md` — read it before every t
 
 ## Quick reference
 
-- **Stack:** Next.js 15 App Router + TypeScript + Tailwind CSS + Supabase + Vercel
+- **Stack:** Expo (React Native) + Expo Router + TypeScript + NativeWind (Tailwind) + Supabase + EAS Build
+- **Platform:** iOS + Android (both from one codebase)
 - **Games:** Gundam Card Game only (v1 launch). One Piece parked for later.
 - **Card data:** apitcg.com (Gundam). Images are Bandai copyright — display via API source.
-- **Folder layout:** `app/` routes · `components/` UI · `lib/` helpers · `types/` shared types · `public/` static
+- **Folder layout:** `app/` routes (Expo Router) · `components/` UI · `lib/` helpers · `types/` shared types · `assets/` images
+
+## Key Expo conventions
+
+- Env vars use `EXPO_PUBLIC_` prefix (not `NEXT_PUBLIC_`)
+- Supabase client is at `lib/supabase.ts` (single export, uses AsyncStorage)
+- Styling via NativeWind — use `className` on RN components (`View`, `Text`, `Pressable`, etc.)
+- Push notifications via `expo-notifications` (no VAPID needed)
+- Camera via `expo-image-picker`
+- Location via `expo-location`
 
 ## Data model delta (differs from original spec)
 
@@ -25,12 +35,12 @@ binder_items ( id uuid pk, binder_id uuid fk, card_id text fk,
 
 ## Milestones
 
-1. ✅ PWA skeleton (manifest + service worker, installable)
+1. ✅ App skeleton (Expo + NativeWind + Supabase client, runs on simulator)
 2. Auth + profile
-3. Card catalog seed (both games via apitcg.com) + per-game typeahead search
+3. Card catalog seed (apitcg.com Gundam) + typeahead search
 4. Binder (create/name, add cards, public/private toggle)
 5. Wantlist
 6. Matching screen (per-game query, distance-filtered)
-7. Push notifications (VAPID, iOS install prompt)
+7. Push notifications (expo-notifications)
 8. Messaging (Supabase Realtime 1:1 chat)
-9. Polish + launch
+9. Polish + launch (swap placeholder app name, real icons)
