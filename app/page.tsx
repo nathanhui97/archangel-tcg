@@ -10,7 +10,7 @@ export default function Home() {
         </div>
         <h1 className="text-4xl font-bold tracking-tight">ArchangelTCG</h1>
         <p className="text-gray-400 text-lg">Trade cards with local players</p>
-        <p className="text-gray-500 text-sm">Gundam · One Piece</p>
+        <p className="text-gray-500 text-sm">Gundam Card Game</p>
       </div>
 
       <div className="w-full max-w-xs space-y-3">

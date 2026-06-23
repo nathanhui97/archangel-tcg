@@ -1,4 +1,4 @@
-export type Game = 'gundam' | 'one_piece'
+export type Game = 'gundam'
 export type Condition = 'NM' | 'LP' | 'MP' | 'HP' | 'DMG'
 
 export interface Profile {

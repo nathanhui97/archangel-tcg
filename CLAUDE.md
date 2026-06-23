@@ -5,8 +5,8 @@ Full knowledge base: `doc/ai-agent-knowledge-base.md` — read it before every t
 ## Quick reference
 
 - **Stack:** Next.js 15 App Router + TypeScript + Tailwind CSS + Supabase + Vercel
-- **Games:** Gundam Card Game + One Piece Card Game. Matching is per-game only.
-- **Card data:** apitcg.com (covers both games). Images are Bandai copyright — display via API source.
+- **Games:** Gundam Card Game only (v1 launch). One Piece parked for later.
+- **Card data:** apitcg.com (Gundam). Images are Bandai copyright — display via API source.
 - **Folder layout:** `app/` routes · `components/` UI · `lib/` helpers · `types/` shared types · `public/` static
 
 ## Data model delta (differs from original spec)
