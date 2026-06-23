@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { View, Text, Pressable, ActivityIndicator } from 'react-native'
+import { Link } from 'expo-router'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
@@ -40,15 +41,33 @@ export default function HomeScreen() {
       <Text className="text-gray-500 text-sm">Signed in as</Text>
       <Text className="text-3xl font-bold text-white mt-1">@{handle}</Text>
 
-      <View className="mt-12 bg-gray-900 border border-gray-800 rounded-2xl p-5">
-        <Text className="text-white font-semibold text-base">You&apos;re all set up.</Text>
-        <Text className="text-gray-400 text-sm mt-2">
-          Next up: build a binder of cards you own, add cards you want, and we&apos;ll
-          match you with local Gundam players to trade.
-        </Text>
-        <Text className="text-gray-500 text-xs mt-3">
-          (Binders + matching come in the next milestones.)
-        </Text>
+      <View className="mt-10 gap-3">
+        <Link href="/(app)/cards" asChild>
+          <Pressable className="bg-indigo-600 active:opacity-80 rounded-2xl px-5 py-4 flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-white font-semibold text-base">Browse cards</Text>
+              <Text className="text-indigo-200 text-xs mt-1">
+                Search the Gundam catalog
+              </Text>
+            </View>
+            <Text className="text-white text-xl">→</Text>
+          </Pressable>
+        </Link>
+
+        <View className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4">
+          <Text className="text-gray-400 font-semibold text-base">Binders</Text>
+          <Text className="text-gray-500 text-xs mt-1">Coming next (Milestone 4)</Text>
+        </View>
+
+        <View className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4">
+          <Text className="text-gray-400 font-semibold text-base">Wantlist</Text>
+          <Text className="text-gray-500 text-xs mt-1">Coming next (Milestone 5)</Text>
+        </View>
+
+        <View className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4">
+          <Text className="text-gray-400 font-semibold text-base">Matches</Text>
+          <Text className="text-gray-500 text-xs mt-1">Coming next (Milestone 6)</Text>
+        </View>
       </View>
 
       <Pressable

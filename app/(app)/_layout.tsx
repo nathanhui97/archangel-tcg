@@ -15,6 +15,7 @@ export default function AppLayout() {
         name="profile-setup"
         options={{ headerShown: false, gestureEnabled: false }}
       />
+      <Stack.Screen name="cards" options={{ headerShown: true, title: 'Browse Cards' }} />
     </Stack>
   )
 }

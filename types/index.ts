@@ -14,9 +14,22 @@ export interface Card {
   id: string
   game: Game
   name: string
-  set_name: string
-  number: string
-  image_url: string
+  set_name: string | null
+  set_code: string | null
+  number: string | null
+  card_type: string | null
+  color: string | null
+  rarity: string | null
+  cost: number | null
+  level: number | null
+  ap: number | null
+  hp: number | null
+  link: string | null
+  zone: string | null
+  trait: string[] | null
+  effect: string | null
+  source_title: string | null
+  image_url: string | null
 }
 
 export interface Binder {

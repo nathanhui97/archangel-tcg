@@ -1,0 +1,20 @@
+{
+  "name": "archangel-tcg-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Server-side scripts (seed, sync). Runs locally, NEVER bundled in the mobile app.",
+  "type": "module",
+  "scripts": {
+    "seed:gundam": "tsx seed-gundam.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "puppeteer": "^23.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.19.0",
+    "typescript": "~5.3.3"
+  }
+}

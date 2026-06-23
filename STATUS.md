@@ -103,7 +103,7 @@ Matches are **computed by query, never stored.**
 |---|---|---|---|
 | 1 | App skeleton | ✅ Done | Expo + NativeWind + Supabase client. Pushed to GitHub. |
 | 2 | Auth + profile | ⏳ Active | Email OTP auth (6-digit code), profile (handle + rounded location). RLS on `profiles`. SecureStore for tokens. |
-| 3 | Card catalog + search | — | Scrape `gundam-gcg.com` → upload images to Supabase Storage → upsert metadata. `pg_trgm` index on `cards.name` for typeahead. |
+| 3 | Card catalog + search | ⏳ Code done, not yet run | Puppeteer scraper at `scripts/seed-gundam.ts`. Cards table + RLS in migration 0002. Storage bucket in 0003. `CardSearch` component + `useCardSearch` hook. Browse Cards screen wired from home. **To activate:** run migrations 0002 + 0003, then `cd scripts && npm install && npm run seed:gundam`. |
 | 4 | Binder | — | Create named binders, add cards, public/private toggle. RLS: own binders fully; others' only if `is_public`. |
 | 5 | Wantlist | — | Same search-to-add flow. **Also: set up Apple Dev + Google Play accounts now** |
 | 6 | Matching screen | — | Query: wantlist ↔ public `binder_items`, same game, within 25 km. Server-side distance via PostGIS or `earth_distance`. |
