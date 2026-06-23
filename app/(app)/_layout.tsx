@@ -19,6 +19,8 @@ export default function AppLayout() {
       <Stack.Screen name="binders/index" options={{ headerShown: true, title: 'My Binders' }} />
       <Stack.Screen name="binders/new" options={{ headerShown: true, title: 'New Binder' }} />
       <Stack.Screen name="binders/[id]" options={{ headerShown: true }} />
+      <Stack.Screen name="wantlist/index" options={{ headerShown: true, title: 'My Wantlist' }} />
+      <Stack.Screen name="wantlist/add" options={{ headerShown: true, title: 'Add to Wantlist' }} />
     </Stack>
   )
 }

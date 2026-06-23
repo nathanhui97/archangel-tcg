@@ -84,6 +84,9 @@ export interface WantlistItem {
   id: string
   user_id: string
   card_id: string
+  notes: string | null
+  created_at: string
+  updated_at: string
   card?: Card
 }
 

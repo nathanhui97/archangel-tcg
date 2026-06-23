@@ -105,7 +105,7 @@ Matches are **computed by query, never stored.**
 | 2 | Auth + profile | ⏳ Active | Email OTP auth (6-digit code), profile (handle + rounded location). RLS on `profiles`. SecureStore for tokens. |
 | 3 | Card catalog + search | ✅ Code + scrapers done | Cheerio scrapers for Gundam + One Piece. Cards table + RLS. Storage bucket. Search component + hook + Browse screen. `--new-only` flag for incremental sync when new sets drop. Multi-game schema (migration 0004). |
 | 4 | Binders | ✅ Done | Multiple named binders, public/private toggle. Add cards via search. Quantity/condition/foil per item. Duplicate adds bump quantity. RLS: own fully, others read-only when public. Long-press to delete. |
-| 5 | Wantlist | — | Same search-to-add flow. **Also: set up Apple Dev + Google Play accounts now** |
+| 5 | Wantlist | ✅ Done | Tap-to-add from search with instant toast feedback. Long-press to remove. RLS: all authenticated can read (powers matching), own-only writes. **Reminder: set up Apple Dev + Google Play accounts soon** |
 | 6 | Matching screen | — | Query: wantlist ↔ public `binder_items`, same game, within 25 km. Server-side distance via PostGIS or `earth_distance`. |
 | 7 | Push notifications | — | expo-notifications. Supabase trigger on insert of public `binder_item` → check for nearby wantlist matches → push. **TestFlight + Internal Testing builds by now.** |
 | 8 | Messaging | — | Supabase Realtime 1:1 chat. Suggest local game shop as meetup. |

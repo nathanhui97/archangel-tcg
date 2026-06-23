@@ -15,7 +15,8 @@
 
 create table if not exists public.binders (
   id          uuid primary key default gen_random_uuid(),
-  user_id     uuid not null references public.profiles(id) on delete cascade,
+  user_id     uuid not null default auth.uid()
+              references public.profiles(id) on delete cascade,
   name        text not null check (length(name) between 1 and 60),
   is_public   boolean not null default false,
   created_at  timestamptz not null default now(),

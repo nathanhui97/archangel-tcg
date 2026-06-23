@@ -66,10 +66,17 @@ export default function HomeScreen() {
           </Pressable>
         </Link>
 
-        <View className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4">
-          <Text className="text-gray-400 font-semibold text-base">Wantlist</Text>
-          <Text className="text-gray-500 text-xs mt-1">Coming next (Milestone 5)</Text>
-        </View>
+        <Link href="/(app)/wantlist" asChild>
+          <Pressable className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 flex-row items-center justify-between active:opacity-70">
+            <View className="flex-1 pr-3">
+              <Text className="text-white font-semibold text-base">Wantlist</Text>
+              <Text className="text-gray-500 text-xs mt-1">
+                Cards you&apos;re hunting — powers matches
+              </Text>
+            </View>
+            <Text className="text-gray-500 text-xl">→</Text>
+          </Pressable>
+        </Link>
 
         <View className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4">
           <Text className="text-gray-400 font-semibold text-base">Matches</Text>
