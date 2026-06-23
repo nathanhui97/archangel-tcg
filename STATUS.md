@@ -20,7 +20,7 @@ A local trading card game app (iOS + Android) where **Gundam Card Game** players
 - **Trades:** In-person only at launch. Meet at local game shop.
 - **Card data source:** Scrape `https://www.gundam-gcg.com/en/cards/` directly. Download images and store in **Supabase Storage** (`card-images` bucket). `cards.image_url` points to the Supabase Storage URL.
 - **Card sync:** Manual seed script in `scripts/seed-gundam.ts`. Re-run when new sets drop. Uses upsert.
-- **Auth method:** Email **magic link** via Supabase Auth. No password. Apple/Google sign-in can be added post-launch if friction is real.
+- **Auth method:** Email **6-digit OTP code** via Supabase Auth (`signInWithOtp` → `verifyOtp`). No password, no leaving the app to tap a link. Apple/Google sign-in can be added post-launch if friction is real.
 - **Location strategy:** Capture once via `expo-location`, **round to 2 decimals (~1.1 km grid)** before storing. Match radius default: **25 km**. Never expose raw coords to the client.
 - **Admin portal:** Not needed for launch — manage via Supabase dashboard directly.
 
@@ -102,7 +102,7 @@ Matches are **computed by query, never stored.**
 | # | Milestone | Status | Notes |
 |---|---|---|---|
 | 1 | App skeleton | ✅ Done | Expo + NativeWind + Supabase client. Pushed to GitHub. |
-| 2 | Auth + profile | ⏳ Active | Magic-link auth, profile (handle + rounded location). RLS on `profiles`. SecureStore for tokens. |
+| 2 | Auth + profile | ⏳ Active | Email OTP auth (6-digit code), profile (handle + rounded location). RLS on `profiles`. SecureStore for tokens. |
 | 3 | Card catalog + search | — | Scrape `gundam-gcg.com` → upload images to Supabase Storage → upsert metadata. `pg_trgm` index on `cards.name` for typeahead. |
 | 4 | Binder | — | Create named binders, add cards, public/private toggle. RLS: own binders fully; others' only if `is_public`. |
 | 5 | Wantlist | — | Same search-to-add flow. **Also: set up Apple Dev + Google Play accounts now** |

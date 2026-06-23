@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router'
 
-export default function AuthLayout() {
+export default function AppLayout() {
   return (
     <Stack
       screenOptions={{
@@ -10,8 +10,11 @@ export default function AuthLayout() {
         contentStyle: { backgroundColor: '#0f172a' },
       }}
     >
-      <Stack.Screen name="login" />
-      <Stack.Screen name="verify" />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="profile-setup"
+        options={{ headerShown: false, gestureEnabled: false }}
+      />
     </Stack>
   )
 }
