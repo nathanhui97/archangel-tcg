@@ -1,22 +1,22 @@
 /**
  * Gundam Card Game seed script.
  *
- * 1. Launches Puppeteer
- * 2. Visits gundam-gcg.com/en/cards/, iterates every set in the filter
- * 3. Extracts each card's metadata + image URL from the rendered DOM
- * 4. Downloads each image and uploads to Supabase Storage (`card-images`)
- * 5. Upserts the metadata + Supabase Storage URL into the `cards` table
+ * The official site (gundam-gcg.com) looks like a JS SPA but is actually
+ * a server-rendered PHP form. We:
+ *   1. GET /en/cards/                              → discover all sets
+ *   2. POST /en/cards/index.php (package=XXX)      → list card IDs in set
+ *   3. GET /en/cards/detail.php?detailSearch=ID    → full card metadata
+ *   4. GET /en/images/cards/card/ID.webp           → download image
+ *   5. Upload image to Supabase Storage + upsert metadata
  *
  * Run with:
- *   cd scripts && npm run seed:gundam
+ *   cd scripts && npm install && npm run seed:gundam
  *
- * Re-running is safe — every step is idempotent (upsert on conflict).
- * Selectors live in the SELECTORS object at the top; if Bandai changes
- * their site, adjust there.
+ * Re-running is safe — every step is upsert/idempotent.
  */
 
 import 'dotenv/config'
-import puppeteer, { type Page } from 'puppeteer'
+import { load } from 'cheerio'
 import { createClient } from '@supabase/supabase-js'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -34,229 +34,250 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1)
 }
 
-const BASE_URL = 'https://www.gundam-gcg.com/en'
-const CARDS_URL = `${BASE_URL}/cards/`
+const BASE_URL = 'https://www.gundam-gcg.com'
+const CARDS_PAGE = `${BASE_URL}/en/cards/`
+const SEARCH_URL = `${BASE_URL}/en/cards/index.php`
+const detailUrl = (id: string) => `${BASE_URL}/en/cards/detail.php?detailSearch=${encodeURIComponent(id)}`
+const imageUrl  = (id: string) => `${BASE_URL}/en/images/cards/card/${encodeURIComponent(id)}.webp`
+
 const BUCKET = 'card-images'
-const POLITE_DELAY_MS = 800  // between image downloads
-
-// Selectors — adjust here if Bandai changes their DOM
-const SELECTORS = {
-  setFilter: 'select[name="expansion"], select[name="product"]',
-  searchButton: 'button[type="submit"], input[type="submit"]',
-  resultList: '.cardlist, .card-list, .result-list, ul.cards',
-  cardItem: '.cardlist li, .card-list .card, .result-list .item',
-  // Per-card data (inside cardItem)
-  cardCode:  '.cardCode, .code, [class*="code"]',
-  cardName:  '.cardName, .name, [class*="name"]',
-  cardImage: 'img',
-  // Detail page (clicked per card if list view doesn't have full data)
-  detailColor:   '[class*="color"]',
-  detailRarity:  '[class*="rarity"]',
-  detailType:    '[class*="type"]',
-  detailCost:    '[class*="cost"]',
-  detailLevel:   '[class*="level"], [class*="lv"]',
-  detailAp:      '[class*="ap"]',
-  detailHp:      '[class*="hp"]',
-  detailEffect:  '[class*="effect"], [class*="text"]',
-  detailSource:  '[class*="source"], [class*="title"]',
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────
-
-type ScrapedCard = {
-  id: string
-  name: string
-  set_name: string | null
-  set_code: string | null
-  number: string | null
-  card_type: string | null
-  color: string | null
-  rarity: string | null
-  cost: number | null
-  level: number | null
-  ap: number | null
-  hp: number | null
-  link: string | null
-  zone: string | null
-  trait: string[] | null
-  effect: string | null
-  source_title: string | null
-  imageOriginUrl: string  // gundam-gcg.com URL, before we re-host
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Supabase admin client (bypasses RLS)
-// ─────────────────────────────────────────────────────────────────────────
+const POLITE_DELAY_MS = 400
+const USER_AGENT = 'Mozilla/5.0 ArchangelTCG-Seeder (contact: github.com/nathanhui97/archangel-tcg)'
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 })
 
 // ─────────────────────────────────────────────────────────────────────────
-// Helpers
+// HTTP helpers (with polite headers + rate limiting)
 // ─────────────────────────────────────────────────────────────────────────
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
-function parseSetCodeFromId(id: string): { setCode: string; number: string } | null {
-  const m = id.match(/^([A-Z]+\d+)-(\d+)/i)
-  if (!m) return null
-  return { setCode: m[1].toUpperCase(), number: m[2] }
+async function getHtml(url: string): Promise<string> {
+  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } })
+  if (!res.ok) throw new Error(`GET ${url} → ${res.status}`)
+  return res.text()
 }
 
-function toInt(v: string | null | undefined): number | null {
-  if (v == null) return null
-  const n = parseInt(String(v).replace(/[^0-9-]/g, ''), 10)
+async function postForm(url: string, body: Record<string, string>): Promise<string> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams(body).toString(),
+  })
+  if (!res.ok) throw new Error(`POST ${url} → ${res.status}`)
+  return res.text()
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Scraping
+// ─────────────────────────────────────────────────────────────────────────
+
+type SetEntry = { packageCode: string; label: string; setCode: string | null }
+
+/** Discover every set from the filter UI on the cards index page. */
+async function discoverSets(): Promise<SetEntry[]> {
+  const html = await getHtml(CARDS_PAGE)
+  const $ = load(html)
+
+  const seen = new Set<string>()
+  const sets: SetEntry[] = []
+
+  // The filter has duplicate copies (header + sidebar) — dedupe by package code.
+  $('.js-selectBtn-package').each((_, el) => {
+    const $el = $(el)
+    const packageCode = ($el.attr('data-val') ?? '').trim()
+    const label = $el.text().trim()
+    if (!packageCode || !label || label === 'ALL') return
+    if (seen.has(packageCode)) return
+    seen.add(packageCode)
+
+    // Extract set code (in brackets) from labels like "Newtype Rising [GD01]"
+    const m = label.match(/\[([^\]]+)\]/)
+    sets.push({ packageCode, label, setCode: m?.[1] ?? null })
+  })
+
+  return sets
+}
+
+/** List every card ID inside a given set. */
+async function listCardIdsInSet(packageCode: string): Promise<string[]> {
+  const html = await postForm(SEARCH_URL, {
+    package: packageCode,
+    freeword: '',
+    sort: '',
+  })
+  const $ = load(html)
+
+  const ids = new Set<string>()
+  $('.cardItem .cardStr').each((_, el) => {
+    const dataSrc = $(el).attr('data-src') ?? ''
+    const match = dataSrc.match(/detailSearch=([^&"]+)/)
+    if (match) ids.add(decodeURIComponent(match[1]))
+  })
+
+  return Array.from(ids)
+}
+
+type CardDetail = {
+  id: string
+  name: string
+  set_name: string | null
+  set_code: string | null
+  number: string | null         // just the digits, e.g. "001"
+  art_variant: string | null    // null for base print; "p1", "p2" for alt arts
+  base_card_id: string | null   // e.g. "GD01-001" — links alt arts to the base print
+  card_type: string | null      // 'Unit' | 'Pilot' | 'Command' | 'Base' | 'Resource'
+  color: string | null
+  rarity: string | null
+  cost: number | null
+  level: number | null
+  ap: number | null
+  hp: number | null
+  zone: string | null
+  link: string | null
+  trait: string[] | null
+  effect: string | null
+  source_title: string | null
+}
+
+const CARD_TYPE_MAP: Record<string, string> = {
+  UNIT: 'Unit',
+  PILOT: 'Pilot',
+  COMMAND: 'Command',
+  BASE: 'Base',
+  RESOURCE: 'Resource',
+}
+
+function normalizeCardType(raw: string | undefined): string | null {
+  if (!raw) return null
+  const key = raw.trim().toUpperCase()
+  return CARD_TYPE_MAP[key] ?? null
+}
+
+/** Split "GD01-001_p1" → { setCode: "GD01", number: "001", artVariant: "p1", baseId: "GD01-001" }. */
+function parseCardId(id: string): {
+  setCode: string | null
+  number: string | null
+  artVariant: string | null
+  baseId: string | null
+} {
+  const m = id.match(/^([A-Z0-9]+)-(\d+)(?:_(.+))?$/i)
+  if (!m) return { setCode: null, number: null, artVariant: null, baseId: null }
+  const [, setCode, number, artVariant] = m
+  return {
+    setCode: setCode.toUpperCase(),
+    number,
+    artVariant: artVariant ?? null,
+    baseId: `${setCode.toUpperCase()}-${number}`,
+  }
+}
+
+function toInt(s: string | undefined): number | null {
+  if (!s) return null
+  const n = parseInt(s.replace(/[^0-9-]/g, ''), 10)
   return Number.isFinite(n) ? n : null
 }
 
-async function downloadImage(url: string): Promise<{ buffer: Buffer; contentType: string }> {
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 ArchangelTCG-Seeder',
-      Referer: BASE_URL,
-    },
+function parseTraits(raw: string | undefined): string[] | null {
+  if (!raw) return null
+  const matches = raw.match(/\(([^)]+)\)/g)
+  if (!matches) return raw.trim() ? [raw.trim()] : null
+  return matches.map((m) => m.slice(1, -1).trim())
+}
+
+/** Fetch full card metadata from the detail page. */
+async function fetchCardDetail(id: string): Promise<CardDetail> {
+  const html = await getHtml(detailUrl(id))
+  const $ = load(html)
+
+  const name = $('.cardName').first().text().trim()
+  const rarity = $('.rarity').first().text().trim() || null
+
+  // Build a label → value map from the .dataBox dl pairs
+  const data: Record<string, string> = {}
+  $('.dataBox').each((_, el) => {
+    const label = $(el).find('.dataTit').text().trim()
+    const value = $(el).find('.dataTxt').text().trim()
+    if (label) data[label] = value
   })
-  if (!res.ok) throw new Error(`Image fetch ${res.status} for ${url}`)
-  const buffer = Buffer.from(await res.arrayBuffer())
-  const contentType = res.headers.get('content-type') ?? 'image/webp'
-  return { buffer, contentType }
-}
 
-async function uploadImage(cardId: string, buffer: Buffer, contentType: string): Promise<string> {
-  const ext = contentType.includes('png') ? 'png' : contentType.includes('jpeg') ? 'jpg' : 'webp'
-  const path = `${cardId}.${ext}`
+  // Effect text lives in the "overview" row (not inside a .dataBox)
+  const effectHtml = $('.cardDataRow.overview .dataTxt').html() ?? ''
+  const effect = effectHtml
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .trim() || null
 
-  const { error } = await supabase.storage.from(BUCKET).upload(path, buffer, {
-    contentType,
-    upsert: true,
-    cacheControl: '31536000',  // 1 year — card art is immutable
-  })
-  if (error) throw new Error(`Storage upload failed for ${cardId}: ${error.message}`)
+  // "Where to get it" gives e.g. "Newtype Rising [GD01]"
+  const whereRaw = data['Where to get it'] ?? ''
+  const whereMatch = whereRaw.match(/^(.+?)\s*\[([^\]]+)\]\s*$/)
+  const setNameFromDetail = whereMatch?.[1]?.trim() ?? (whereRaw || null)
+  const setCodeFromDetail = whereMatch?.[2]?.trim() ?? null
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
-  return data.publicUrl
-}
+  // Parse the ID itself: set code + number + alt-art variant
+  const parsed = parseCardId(id)
 
-async function upsertCard(card: ScrapedCard, imageUrl: string) {
-  const sc = parseSetCodeFromId(card.id)
-  const { error } = await supabase.from('cards').upsert(
-    {
-      id: card.id,
-      game: 'gundam',
-      name: card.name,
-      set_name: card.set_name,
-      set_code: card.set_code ?? sc?.setCode ?? null,
-      number: card.number ?? sc?.number ?? null,
-      card_type: card.card_type,
-      color: card.color,
-      rarity: card.rarity,
-      cost: card.cost,
-      level: card.level,
-      ap: card.ap,
-      hp: card.hp,
-      link: card.link,
-      zone: card.zone,
-      trait: card.trait,
-      effect: card.effect,
-      source_title: card.source_title,
-      image_url: imageUrl,
-    },
-    { onConflict: 'id' }
-  )
-  if (error) throw new Error(`DB upsert failed for ${card.id}: ${error.message}`)
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Scraper
-// ─────────────────────────────────────────────────────────────────────────
-
-async function getSetList(page: Page): Promise<{ value: string; label: string }[]> {
-  await page.goto(CARDS_URL, { waitUntil: 'networkidle2', timeout: 60_000 })
-
-  return page.evaluate((selector) => {
-    const select = document.querySelector(selector) as HTMLSelectElement | null
-    if (!select) return []
-    return Array.from(select.options)
-      .map((o) => ({ value: o.value, label: (o.textContent ?? '').trim() }))
-      .filter((o) => o.value && o.value !== '')
-  }, SELECTORS.setFilter)
-}
-
-async function scrapeSet(page: Page, set: { value: string; label: string }): Promise<ScrapedCard[]> {
-  console.log(`  ↳ Loading set: ${set.label}`)
-
-  await page.goto(CARDS_URL, { waitUntil: 'networkidle2' })
-  await page.select(SELECTORS.setFilter, set.value)
-
-  // Submit the filter (the search button may be a form submit)
-  const submit = await page.$(SELECTORS.searchButton)
-  if (submit) {
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => undefined),
-      submit.click(),
-    ])
-  } else {
-    // SPA — wait for result re-render
-    await sleep(1500)
+  return {
+    id,
+    name,
+    set_name: setNameFromDetail,
+    set_code: setCodeFromDetail ?? parsed.setCode,
+    number: parsed.number,
+    art_variant: parsed.artVariant,
+    base_card_id: parsed.baseId,
+    card_type: normalizeCardType(data['TYPE'] ?? data['Type']),
+    color: data['COLOR'] || data['Color'] || null,
+    rarity,
+    cost: toInt(data['COST'] ?? data['Cost']),
+    level: toInt(data['Lv.'] ?? data['LV.'] ?? data['Lv']),
+    ap: toInt(data['AP']),
+    hp: toInt(data['HP']),
+    zone: data['Zone'] || null,
+    link: data['Link'] || null,
+    trait: parseTraits(data['Trait']),
+    effect,
+    source_title: data['Source Title'] || null,
   }
+}
 
-  // Wait for the result list to be present
-  await page
-    .waitForSelector(SELECTORS.cardItem, { timeout: 15_000 })
-    .catch(() => console.warn(`    ⚠ No cards found in set ${set.label}`))
+// ─────────────────────────────────────────────────────────────────────────
+// Image + DB
+// ─────────────────────────────────────────────────────────────────────────
 
-  const cards = await page.evaluate(
-    (sels, setName, setValue) => {
-      const items = Array.from(document.querySelectorAll(sels.cardItem))
-      return items.map((el) => {
-        const text = (q: string) =>
-          (el.querySelector(q)?.textContent ?? '').trim() || null
-        const img = el.querySelector(sels.cardImage) as HTMLImageElement | null
-        const code = text(sels.cardCode)
-        const name = text(sels.cardName)
+async function uploadImage(id: string): Promise<string> {
+  const res = await fetch(imageUrl(id), {
+    headers: { 'User-Agent': USER_AGENT, Referer: CARDS_PAGE },
+  })
+  if (!res.ok) throw new Error(`image GET → ${res.status}`)
+  const buffer = Buffer.from(await res.arrayBuffer())
 
-        return {
-          id: code ?? '',
-          name: name ?? '',
-          set_name: setName,
-          set_code: setValue,
-          number: null,
-          card_type: text(sels.detailType),
-          color: text(sels.detailColor),
-          rarity: text(sels.detailRarity),
-          cost: text(sels.detailCost),
-          level: text(sels.detailLevel),
-          ap: text(sels.detailAp),
-          hp: text(sels.detailHp),
-          link: null,
-          zone: null,
-          trait: null,
-          effect: text(sels.detailEffect),
-          source_title: text(sels.detailSource),
-          imageOriginUrl: img?.src ?? '',
-        }
-      })
-    },
-    SELECTORS,
-    set.label,
-    set.value
-  )
+  const path = `${id}.webp`
+  const { error } = await supabase.storage.from(BUCKET).upload(path, buffer, {
+    contentType: 'image/webp',
+    upsert: true,
+    cacheControl: '31536000',
+  })
+  if (error) throw new Error(`storage upload → ${error.message}`)
 
-  // Coerce string fields → numbers where applicable, and filter junk
-  return cards
-    .filter((c) => c.id && c.name && c.imageOriginUrl)
-    .map((c) => ({
-      ...c,
-      cost: toInt(c.cost as unknown as string),
-      level: toInt(c.level as unknown as string),
-      ap: toInt(c.ap as unknown as string),
-      hp: toInt(c.hp as unknown as string),
-    })) as ScrapedCard[]
+  return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
+}
+
+async function upsertCard(detail: CardDetail, imageUrl: string) {
+  const { error } = await supabase
+    .from('cards')
+    .upsert({ game: 'gundam', ...detail, image_url: imageUrl }, { onConflict: 'id' })
+  if (error) throw new Error(`db upsert → ${error.message}`)
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -264,49 +285,34 @@ async function scrapeSet(page: Page, set: { value: string; label: string }): Pro
 // ─────────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('▶ Launching headless browser…')
-  const browser = await puppeteer.launch({ headless: true })
-  const page = await browser.newPage()
-  await page.setUserAgent('Mozilla/5.0 ArchangelTCG-Seeder')
-  await page.setViewport({ width: 1280, height: 1800 })
+  console.log('▶ Discovering sets…')
+  const sets = await discoverSets()
+  console.log(`  Found ${sets.length} sets`)
 
-  try {
-    console.log('▶ Discovering sets…')
-    const sets = await getSetList(page)
-    if (sets.length === 0) {
-      console.error('✗ Could not find the set filter. Inspect the page and update SELECTORS.setFilter.')
-      process.exit(1)
-    }
-    console.log(`  Found ${sets.length} sets`)
+  let totalOk = 0
+  let totalSkipped = 0
 
-    let totalCards = 0
-    let totalSkipped = 0
+  for (const set of sets) {
+    console.log(`\n▶ ${set.label} (package ${set.packageCode})`)
+    const ids = await listCardIdsInSet(set.packageCode)
+    console.log(`  ${ids.length} cards`)
 
-    for (const set of sets) {
-      const cards = await scrapeSet(page, set)
-      console.log(`  • Scraped ${cards.length} cards from ${set.label}`)
-
-      for (const card of cards) {
-        try {
-          const { buffer, contentType } = await downloadImage(card.imageOriginUrl)
-          const publicUrl = await uploadImage(card.id, buffer, contentType)
-          await upsertCard(card, publicUrl)
-          totalCards++
-          if (totalCards % 25 === 0) {
-            console.log(`    ✓ ${totalCards} cards uploaded so far…`)
-          }
-        } catch (err) {
-          totalSkipped++
-          console.warn(`    ⚠ Skipped ${card.id}: ${(err as Error).message}`)
-        }
-        await sleep(POLITE_DELAY_MS)  // be a polite scraper
+    for (const id of ids) {
+      try {
+        const detail = await fetchCardDetail(id)
+        const url = await uploadImage(id)
+        await upsertCard(detail, url)
+        totalOk++
+        if (totalOk % 25 === 0) console.log(`  ✓ ${totalOk} cards uploaded`)
+      } catch (err) {
+        totalSkipped++
+        console.warn(`  ⚠ ${id}: ${(err as Error).message}`)
       }
+      await sleep(POLITE_DELAY_MS)
     }
-
-    console.log(`\n✓ Done. Uploaded ${totalCards} cards. Skipped ${totalSkipped}.`)
-  } finally {
-    await browser.close()
   }
+
+  console.log(`\n✓ Done. Uploaded ${totalOk}. Skipped ${totalSkipped}.`)
 }
 
 main().catch((err) => {

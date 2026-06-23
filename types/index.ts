@@ -10,14 +10,18 @@ export interface Profile {
   created_at: string
 }
 
+export type CardType = 'Unit' | 'Pilot' | 'Command' | 'Base' | 'Resource'
+
 export interface Card {
-  id: string
+  id: string                       // full unique code: "GD01-001" or "GD01-001_p1"
   game: Game
   name: string
   set_name: string | null
-  set_code: string | null
-  number: string | null
-  card_type: string | null
+  set_code: string | null          // "GD01"
+  number: string | null            // "001"
+  art_variant: string | null       // null for base print; "p1" / "p2" for alt arts
+  base_card_id: string | null      // "GD01-001" — same for all prints of a card
+  card_type: CardType | null
   color: string | null
   rarity: string | null
   cost: number | null
