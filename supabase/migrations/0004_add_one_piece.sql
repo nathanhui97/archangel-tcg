@@ -1,53 +1,37 @@
--- Milestone 3.5: Add One Piece Card Game support to the cards table
+-- Milestone 3.5: Add One Piece Card Game support to the cards table.
 --
--- One Piece introduces a few fields Gundam doesn't have:
+-- One Piece introduces fields Gundam doesn't have:
 --   - power     (attack value, 1000-10000 scale vs Gundam's 1-10 AP)
 --   - counter   (defensive value used when defending)
 --   - life      (Leader card's life total)
 --   - attribute (fight attribute: Special/Strike/Slash/Ranged/Wisdom)
 --   - block     (rotation block icon, 1-5 or X)
 --
--- Also expands the `game` and `card_type` CHECK constraints.
+-- Each statement is on its own line — Supabase's SQL editor doesn't
+-- always handle multi-action ALTER TABLEs.
 
--- ─────────────────────────────────────────────────────────────────────────
--- Expand game CHECK to allow 'one_piece'
--- ─────────────────────────────────────────────────────────────────────────
+-- Drop old check constraints (no-op if they don't exist)
+ALTER TABLE public.cards DROP CONSTRAINT IF EXISTS cards_game_check;
+ALTER TABLE public.cards DROP CONSTRAINT IF EXISTS cards_card_type_check;
 
-alter table public.cards
-  drop constraint if exists cards_game_check;
+-- New check constraints
+ALTER TABLE public.cards ADD CONSTRAINT cards_game_check
+  CHECK (game IN ('gundam', 'one_piece'));
 
-alter table public.cards
-  add constraint cards_game_check
-  check (game in ('gundam', 'one_piece'));
-
--- ─────────────────────────────────────────────────────────────────────────
--- Expand card_type CHECK to allow One Piece categories
--- ─────────────────────────────────────────────────────────────────────────
-
-alter table public.cards
-  drop constraint if exists cards_card_type_check;
-
-alter table public.cards
-  add constraint cards_card_type_check
-  check (card_type is null or card_type in (
-    -- Gundam
-    'Unit', 'Pilot', 'Command', 'Base', 'Resource',
-    -- One Piece
-    'Leader', 'Character', 'Event', 'Stage', 'DON!!'
+ALTER TABLE public.cards ADD CONSTRAINT cards_card_type_check
+  CHECK (card_type IS NULL OR card_type IN (
+    'Unit','Pilot','Command','Base','Resource',
+    'Leader','Character','Event','Stage','DON!!'
   ));
 
--- ─────────────────────────────────────────────────────────────────────────
--- One Piece-specific columns (nullable for Gundam cards)
--- ─────────────────────────────────────────────────────────────────────────
-
-alter table public.cards
-  add column if not exists power     int,
-  add column if not exists counter   int,
-  add column if not exists life      int,
-  add column if not exists attribute text,
-  add column if not exists block     text;
+-- One Piece-specific nullable columns
+ALTER TABLE public.cards ADD COLUMN IF NOT EXISTS power     INT;
+ALTER TABLE public.cards ADD COLUMN IF NOT EXISTS counter   INT;
+ALTER TABLE public.cards ADD COLUMN IF NOT EXISTS life      INT;
+ALTER TABLE public.cards ADD COLUMN IF NOT EXISTS attribute TEXT;
+ALTER TABLE public.cards ADD COLUMN IF NOT EXISTS block     TEXT;
 
 -- Indexes for the new searchable fields
-create index if not exists cards_power_idx     on public.cards (power);
-create index if not exists cards_attribute_idx on public.cards (attribute);
-create index if not exists cards_block_idx     on public.cards (block);
+CREATE INDEX IF NOT EXISTS cards_power_idx     ON public.cards (power);
+CREATE INDEX IF NOT EXISTS cards_attribute_idx ON public.cards (attribute);
+CREATE INDEX IF NOT EXISTS cards_block_idx     ON public.cards (block);
