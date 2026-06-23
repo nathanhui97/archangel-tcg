@@ -103,8 +103,8 @@ Matches are **computed by query, never stored.**
 |---|---|---|---|
 | 1 | App skeleton | ✅ Done | Expo + NativeWind + Supabase client. Pushed to GitHub. |
 | 2 | Auth + profile | ⏳ Active | Email OTP auth (6-digit code), profile (handle + rounded location). RLS on `profiles`. SecureStore for tokens. |
-| 3 | Card catalog + search | ⏳ Code done, not yet run | Puppeteer scraper at `scripts/seed-gundam.ts`. Cards table + RLS in migration 0002. Storage bucket in 0003. `CardSearch` component + `useCardSearch` hook. Browse Cards screen wired from home. **To activate:** run migrations 0002 + 0003, then `cd scripts && npm install && npm run seed:gundam`. |
-| 4 | Binder | — | Create named binders, add cards, public/private toggle. RLS: own binders fully; others' only if `is_public`. |
+| 3 | Card catalog + search | ✅ Code + scrapers done | Cheerio scrapers for Gundam + One Piece. Cards table + RLS. Storage bucket. Search component + hook + Browse screen. `--new-only` flag for incremental sync when new sets drop. Multi-game schema (migration 0004). |
+| 4 | Binders | ✅ Done | Multiple named binders, public/private toggle. Add cards via search. Quantity/condition/foil per item. Duplicate adds bump quantity. RLS: own fully, others read-only when public. Long-press to delete. |
 | 5 | Wantlist | — | Same search-to-add flow. **Also: set up Apple Dev + Google Play accounts now** |
 | 6 | Matching screen | — | Query: wantlist ↔ public `binder_items`, same game, within 25 km. Server-side distance via PostGIS or `earth_distance`. |
 | 7 | Push notifications | — | expo-notifications. Supabase trigger on insert of public `binder_item` → check for nearby wantlist matches → push. **TestFlight + Internal Testing builds by now.** |
