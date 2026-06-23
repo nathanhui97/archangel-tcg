@@ -44,6 +44,17 @@ const BUCKET = 'card-images'
 const POLITE_DELAY_MS = 400
 const USER_AGENT = 'Mozilla/5.0 ArchangelTCG-Seeder (contact: github.com/nathanhui97/archangel-tcg)'
 
+// CLI args:  --max=N (cap cards per set, useful for first-run smoke testing)
+//            --sets=GD01,ST04 (only process these set codes)
+const MAX_PER_SET = (() => {
+  const a = process.argv.find((x) => x.startsWith('--max='))
+  return a ? parseInt(a.split('=')[1], 10) : Infinity
+})()
+const ONLY_SETS = (() => {
+  const a = process.argv.find((x) => x.startsWith('--sets='))
+  return a ? new Set(a.split('=')[1].split(',').map((s) => s.toUpperCase())) : null
+})()
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 })
@@ -293,9 +304,14 @@ async function main() {
   let totalSkipped = 0
 
   for (const set of sets) {
+    if (ONLY_SETS && set.setCode && !ONLY_SETS.has(set.setCode.toUpperCase())) {
+      console.log(`\n· Skipping ${set.label} (not in --sets filter)`)
+      continue
+    }
     console.log(`\n▶ ${set.label} (package ${set.packageCode})`)
-    const ids = await listCardIdsInSet(set.packageCode)
-    console.log(`  ${ids.length} cards`)
+    const allIds = await listCardIdsInSet(set.packageCode)
+    const ids = Number.isFinite(MAX_PER_SET) ? allIds.slice(0, MAX_PER_SET) : allIds
+    console.log(`  ${ids.length} cards${allIds.length > ids.length ? ` (capped from ${allIds.length} by --max)` : ''}`)
 
     for (const id of ids) {
       try {
