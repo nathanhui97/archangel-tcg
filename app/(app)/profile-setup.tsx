@@ -12,8 +12,11 @@ import {
 import * as Location from 'expo-location'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import type { Game } from '@/types'
+import { GAME_LABELS } from '@/types'
 
 const HANDLE_REGEX = /^[a-zA-Z0-9_]{3,20}$/
+const ALL_GAMES: Game[] = ['gundam', 'one_piece']
 
 type HandleStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
@@ -22,12 +25,21 @@ export default function ProfileSetupScreen() {
   const [handle, setHandle] = useState('')
   const [handleStatus, setHandleStatus] = useState<HandleStatus>('idle')
 
+  const [games, setGames] = useState<Game[]>(['gundam'])
+
   const [locStatus, setLocStatus] = useState<'none' | 'capturing' | 'set' | 'denied'>('none')
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  function toggleGame(g: Game) {
+    setError(null)
+    setGames((prev) =>
+      prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
+    )
+  }
 
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -97,6 +109,10 @@ export default function ProfileSetupScreen() {
       setError('That handle is taken or unavailable.')
       return
     }
+    if (games.length === 0) {
+      setError('Pick at least one game you play.')
+      return
+    }
     if (lat === null || lng === null) {
       setError('Set your approximate location so we can find players near you.')
       return
@@ -108,7 +124,7 @@ export default function ProfileSetupScreen() {
     const { error: sbError } = await supabase.from('profiles').insert({
       id: session.user.id,
       handle,
-      games: ['gundam'],
+      games,
       lat,
       lng,
     })
@@ -202,7 +218,11 @@ export default function ProfileSetupScreen() {
   }
 
   const canSave =
-    handleStatus === 'available' && lat !== null && lng !== null && !saving
+    handleStatus === 'available' &&
+    games.length > 0 &&
+    lat !== null &&
+    lng !== null &&
+    !saving
 
   return (
     <KeyboardAvoidingView
@@ -233,6 +253,37 @@ export default function ProfileSetupScreen() {
               className="bg-gray-900 text-white px-4 py-4 rounded-xl border border-gray-800 text-base"
             />
             {handleHint()}
+          </View>
+
+          <View className="mt-8">
+            <Text className="text-gray-300 text-sm mb-2 font-medium">Games you play</Text>
+            <Text className="text-gray-500 text-xs mb-3">
+              Pick at least one. Matches are per-game — you only see trades for games you play.
+            </Text>
+            <View className="flex-row gap-2">
+              {ALL_GAMES.map((g) => {
+                const selected = games.includes(g)
+                return (
+                  <Pressable
+                    key={g}
+                    onPress={() => toggleGame(g)}
+                    className={`flex-1 py-3 rounded-xl border items-center active:opacity-80 ${
+                      selected
+                        ? 'bg-indigo-600 border-indigo-500'
+                        : 'bg-gray-900 border-gray-800'
+                    }`}
+                  >
+                    <Text
+                      className={`font-semibold text-sm ${
+                        selected ? 'text-white' : 'text-gray-300'
+                      }`}
+                    >
+                      {GAME_LABELS[g]}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
           </View>
 
           <View className="mt-8">

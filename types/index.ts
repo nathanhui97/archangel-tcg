@@ -63,6 +63,7 @@ export interface Binder {
   name: string
   is_public: boolean
   created_at: string
+  updated_at: string
 }
 
 export interface BinderItem {
@@ -73,6 +74,9 @@ export interface BinderItem {
   condition: Condition
   is_foil: boolean
   photo_url: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
   card?: Card
 }
 

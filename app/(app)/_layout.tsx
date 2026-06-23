@@ -16,6 +16,9 @@ export default function AppLayout() {
         options={{ headerShown: false, gestureEnabled: false }}
       />
       <Stack.Screen name="cards" options={{ headerShown: true, title: 'Browse Cards' }} />
+      <Stack.Screen name="binders/index" options={{ headerShown: true, title: 'My Binders' }} />
+      <Stack.Screen name="binders/new" options={{ headerShown: true, title: 'New Binder' }} />
+      <Stack.Screen name="binders/[id]" options={{ headerShown: true }} />
     </Stack>
   )
 }
