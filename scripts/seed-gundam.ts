@@ -79,6 +79,27 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+const TRANSIENT_ERROR = /fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|network/i
+
+/** Retry a network operation on transient failures (3 tries, linear backoff). */
+async function withRetry<T>(fn: () => Promise<T>, label = ''): Promise<T> {
+  const maxAttempts = 3
+  let lastErr: unknown
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err
+      const msg = (err as Error)?.message ?? String(err)
+      if (!TRANSIENT_ERROR.test(msg) || attempt === maxAttempts) throw err
+      const backoff = 1000 * attempt
+      console.warn(`    ↻ ${label} retry ${attempt}/${maxAttempts - 1} after ${backoff}ms (${msg})`)
+      await sleep(backoff)
+    }
+  }
+  throw lastErr
+}
+
 async function getHtml(url: string): Promise<string> {
   const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } })
   if (!res.ok) throw new Error(`GET ${url} → ${res.status}`)
@@ -279,28 +300,34 @@ async function fetchCardDetail(id: string): Promise<CardDetail> {
 // ─────────────────────────────────────────────────────────────────────────
 
 async function uploadImage(id: string): Promise<string> {
-  const res = await fetch(imageUrl(id), {
-    headers: { 'User-Agent': USER_AGENT, Referer: CARDS_PAGE },
-  })
-  if (!res.ok) throw new Error(`image GET → ${res.status}`)
-  const buffer = Buffer.from(await res.arrayBuffer())
+  const buffer = await withRetry(async () => {
+    const res = await fetch(imageUrl(id), {
+      headers: { 'User-Agent': USER_AGENT, Referer: CARDS_PAGE },
+    })
+    if (!res.ok) throw new Error(`image GET → ${res.status}`)
+    return Buffer.from(await res.arrayBuffer())
+  }, `${id} image fetch`)
 
   const path = `${id}.webp`
-  const { error } = await supabase.storage.from(BUCKET).upload(path, buffer, {
-    contentType: 'image/webp',
-    upsert: true,
-    cacheControl: '31536000',
-  })
-  if (error) throw new Error(`storage upload → ${error.message}`)
+  await withRetry(async () => {
+    const { error } = await supabase.storage.from(BUCKET).upload(path, buffer, {
+      contentType: 'image/webp',
+      upsert: true,
+      cacheControl: '31536000',
+    })
+    if (error) throw new Error(`storage upload → ${error.message}`)
+  }, `${id} storage upload`)
 
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
 }
 
 async function upsertCard(detail: CardDetail, imageUrl: string) {
-  const { error } = await supabase
-    .from('cards')
-    .upsert({ game: 'gundam', ...detail, image_url: imageUrl }, { onConflict: 'id' })
-  if (error) throw new Error(`db upsert → ${error.message}`)
+  await withRetry(async () => {
+    const { error } = await supabase
+      .from('cards')
+      .upsert({ game: 'gundam', ...detail, image_url: imageUrl }, { onConflict: 'id' })
+    if (error) throw new Error(`db upsert → ${error.message}`)
+  }, `${detail.id} db upsert`)
 }
 
 // ─────────────────────────────────────────────────────────────────────────
