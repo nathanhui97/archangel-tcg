@@ -14,7 +14,7 @@ values (
   'card-images',
   'card-images',
   true,                                          -- public-read
-  524288,                                        -- 512 KB cap per image
+  4194304,                                       -- 4 MB cap (alt arts can be ~1-2 MB)
   array['image/webp', 'image/png', 'image/jpeg']
 )
 on conflict (id) do update
