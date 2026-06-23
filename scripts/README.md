@@ -16,14 +16,39 @@ npm install
 
 ### `npm run seed:gundam`
 
-Scrapes the entire Gundam Card Game catalog from `gundam-gcg.com`, downloads each card image, uploads it to the `card-images` Supabase Storage bucket, and upserts the metadata into the `cards` table.
+Scrapes the entire Gundam Card Game catalog from `gundam-gcg.com`. ~20–40 min for a full run.
 
-- **Safe to re-run** at any time (everything is upserted).
-- **Polite** — sleeps between image downloads to avoid hammering Bandai's CDN.
-- **First run takes ~30–60 minutes** depending on the catalog size (hundreds of cards).
-- **Re-runs are fast** for already-seeded cards (re-upload is idempotent).
+### `npm run seed:onepiece`
 
-Run this once on launch, and again whenever Bandai releases a new set.
+Scrapes the entire One Piece Card Game catalog from `en.onepiece-cardgame.com`. ~10–20 min (faster because all card details are inline on the listing page, no per-card fetch).
+
+Both scripts download images, upload them to the `card-images` Supabase Storage bucket, and upsert metadata into the `cards` table. They're idempotent — safe to re-run anytime.
+
+### Flags (both scripts)
+
+| Flag | Purpose |
+|---|---|
+| `--max=N` | Only process N cards per set (smoke testing). |
+| `--sets=GD01,OP01` | Only process these set codes. |
+| `--new-only` | Skip sets that already have cards in the DB. **Use this when new sets drop** — takes seconds instead of minutes. |
+
+Examples:
+```bash
+npm run seed:onepiece -- --max=3 --sets=OP01     # smoke test
+npm run seed:gundam -- --new-only                  # incremental sync
+npm run seed:onepiece                              # full first-time run
+```
+
+## Future-proofing for new card releases
+
+When Bandai releases a new set:
+
+1. Just run `npm run seed:gundam -- --new-only` (or `:onepiece`).
+2. Sets the scraper already knows about are skipped immediately.
+3. New sets (auto-discovered from the official site) get scraped fully.
+4. ~30 seconds for the check, plus 1-2 min per new set.
+
+Optionally schedule it: a GitHub Action that runs weekly with `--new-only` will keep the catalog fresh with zero manual work. We can wire that up post-launch.
 
 ## How the scraper works
 

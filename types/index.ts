@@ -1,5 +1,10 @@
-export type Game = 'gundam'
+export type Game = 'gundam' | 'one_piece'
 export type Condition = 'NM' | 'LP' | 'MP' | 'HP' | 'DMG'
+
+export const GAME_LABELS: Record<Game, string> = {
+  gundam: 'Gundam Card Game',
+  one_piece: 'One Piece Card Game',
+}
 
 export interface Profile {
   id: string
@@ -10,29 +15,45 @@ export interface Profile {
   created_at: string
 }
 
-export type CardType = 'Unit' | 'Pilot' | 'Command' | 'Base' | 'Resource'
+export type CardType =
+  // Gundam
+  | 'Unit' | 'Pilot' | 'Command' | 'Base' | 'Resource'
+  // One Piece
+  | 'Leader' | 'Character' | 'Event' | 'Stage' | 'DON!!'
 
 export interface Card {
-  id: string                       // full unique code: "GD01-001" or "GD01-001_p1"
+  id: string                       // full unique code: "GD01-001" or "OP01-001_p1"
   game: Game
   name: string
   set_name: string | null
-  set_code: string | null          // "GD01"
+  set_code: string | null          // "GD01" / "OP01"
   number: string | null            // "001"
   art_variant: string | null       // null for base print; "p1" / "p2" for alt arts
   base_card_id: string | null      // "GD01-001" — same for all prints of a card
   card_type: CardType | null
-  color: string | null
+
+  // Shared
+  color: string | null             // single ("Red") or dual ("Red/Green") for One Piece
   rarity: string | null
   cost: number | null
+  effect: string | null
+  trait: string[] | null
+  source_title: string | null
+
+  // Gundam-only
   level: number | null
   ap: number | null
   hp: number | null
   link: string | null
   zone: string | null
-  trait: string[] | null
-  effect: string | null
-  source_title: string | null
+
+  // One Piece-only
+  power: number | null             // attack value (1000-10000 scale)
+  counter: number | null           // defensive value
+  life: number | null              // Leader life total
+  attribute: string | null         // Special / Strike / Slash / Ranged / Wisdom
+  block: string | null             // rotation marker
+
   image_url: string | null
 }
 

@@ -54,6 +54,18 @@ const ONLY_SETS = (() => {
   const a = process.argv.find((x) => x.startsWith('--sets='))
   return a ? new Set(a.split('=')[1].split(',').map((s) => s.toUpperCase())) : null
 })()
+const NEW_ONLY = process.argv.includes('--new-only')
+
+async function setAlreadyImported(setCode: string | null): Promise<boolean> {
+  if (!setCode) return false
+  const { count, error } = await supabase
+    .from('cards')
+    .select('id', { count: 'exact', head: true })
+    .eq('game', 'gundam')
+    .eq('set_code', setCode)
+  if (error) return false
+  return (count ?? 0) > 0
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -306,6 +318,10 @@ async function main() {
   for (const set of sets) {
     if (ONLY_SETS && set.setCode && !ONLY_SETS.has(set.setCode.toUpperCase())) {
       console.log(`\n· Skipping ${set.label} (not in --sets filter)`)
+      continue
+    }
+    if (NEW_ONLY && (await setAlreadyImported(set.setCode))) {
+      console.log(`\n· Skipping ${set.label} (--new-only: already imported)`)
       continue
     }
     console.log(`\n▶ ${set.label} (package ${set.packageCode})`)

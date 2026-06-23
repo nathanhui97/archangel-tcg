@@ -5,7 +5,8 @@
   "description": "Server-side scripts (seed, sync). Runs locally, NEVER bundled in the mobile app.",
   "type": "module",
   "scripts": {
-    "seed:gundam": "tsx seed-gundam.ts"
+    "seed:gundam": "tsx seed-gundam.ts",
+    "seed:onepiece": "tsx seed-onepiece.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
