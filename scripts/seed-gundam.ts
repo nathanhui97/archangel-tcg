@@ -55,6 +55,7 @@ const ONLY_SETS = (() => {
   return a ? new Set(a.split('=')[1].split(',').map((s) => s.toUpperCase())) : null
 })()
 const NEW_ONLY = process.argv.includes('--new-only')
+const MISSING_ONLY = process.argv.includes('--missing-only')
 
 async function setAlreadyImported(setCode: string | null): Promise<boolean> {
   if (!setCode) return false
@@ -65,6 +66,17 @@ async function setAlreadyImported(setCode: string | null): Promise<boolean> {
     .eq('set_code', setCode)
   if (error) return false
   return (count ?? 0) > 0
+}
+
+async function existingIdsInSet(setCode: string | null): Promise<Set<string>> {
+  if (!setCode) return new Set()
+  const { data, error } = await supabase
+    .from('cards')
+    .select('id')
+    .eq('game', 'gundam')
+    .eq('set_code', setCode)
+  if (error) return new Set()
+  return new Set((data ?? []).map((r) => r.id))
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -353,8 +365,19 @@ async function main() {
     }
     console.log(`\n▶ ${set.label} (package ${set.packageCode})`)
     const allIds = await listCardIdsInSet(set.packageCode)
-    const ids = Number.isFinite(MAX_PER_SET) ? allIds.slice(0, MAX_PER_SET) : allIds
-    console.log(`  ${ids.length} cards${allIds.length > ids.length ? ` (capped from ${allIds.length} by --max)` : ''}`)
+
+    let filteredIds = allIds
+    if (MISSING_ONLY) {
+      const existing = await existingIdsInSet(set.setCode)
+      filteredIds = allIds.filter((id) => !existing.has(id))
+      console.log(`  ${filteredIds.length} missing of ${allIds.length} (${allIds.length - filteredIds.length} already in DB)`)
+      if (filteredIds.length === 0) continue
+    }
+
+    const ids = Number.isFinite(MAX_PER_SET) ? filteredIds.slice(0, MAX_PER_SET) : filteredIds
+    if (!MISSING_ONLY) {
+      console.log(`  ${ids.length} cards${allIds.length > ids.length ? ` (capped from ${allIds.length} by --max)` : ''}`)
+    }
 
     for (const id of ids) {
       try {

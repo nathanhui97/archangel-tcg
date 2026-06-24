@@ -49,14 +49,21 @@ NODE_TLS_REJECT_UNAUTHORIZED=0 npm run smoke-test
 |---|---|
 | `--max=N` | Only process N cards per set (smoke testing). |
 | `--sets=GD01,OP01` | Only process these set codes. |
-| `--new-only` | Skip sets that already have cards in the DB. **Use this when new sets drop** — takes seconds instead of minutes. |
+| `--new-only` | Skip whole sets that already have any cards in the DB. **Use when new sets drop** — takes seconds instead of minutes. |
+| `--missing-only` | Per-card check: skip cards already in the DB. **Use after a partial-failure run** to retry only the ones that didn't make it. |
 
 Examples:
 ```bash
 npm run seed:onepiece -- --max=3 --sets=OP01     # smoke test
-npm run seed:gundam -- --new-only                  # incremental sync
+npm run seed:gundam -- --new-only                  # incremental sync when a new set drops
+npm run seed:onepiece -- --missing-only            # retry only the ones that failed last time
 npm run seed:onepiece                              # full first-time run
 ```
+
+### `--new-only` vs `--missing-only`
+
+- **`--new-only`** is fast but coarse — it skips a set entirely if even one card from it is in the DB. Best for adding *brand new* sets when you know everything else is fine.
+- **`--missing-only`** is slower (queries per set) but precise — it checks every card. Best for *fixing partial runs* where some cards in known sets failed.
 
 ## Future-proofing for new card releases
 

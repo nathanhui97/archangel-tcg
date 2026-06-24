@@ -56,6 +56,7 @@ const ONLY_SETS = (() => {
   return a ? new Set(a.split('=')[1].split(',').map((s) => s.toUpperCase())) : null
 })()
 const NEW_ONLY = process.argv.includes('--new-only')
+const MISSING_ONLY = process.argv.includes('--missing-only')
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -327,6 +328,17 @@ async function setAlreadyImported(setCode: string | null): Promise<boolean> {
   return (count ?? 0) > 0
 }
 
+async function existingIdsInSet(setCode: string | null): Promise<Set<string>> {
+  if (!setCode) return new Set()
+  const { data, error } = await supabase
+    .from('cards')
+    .select('id')
+    .eq('game', 'one_piece')
+    .eq('set_code', setCode)
+  if (error) return new Set()
+  return new Set((data ?? []).map((r) => r.id))
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────────────────────────────────────
@@ -351,8 +363,19 @@ async function main() {
 
     console.log(`\n▶ ${set.label} (series ${set.seriesValue})`)
     const cards = await scrapeSet(set)
-    const limited = Number.isFinite(MAX_PER_SET) ? cards.slice(0, MAX_PER_SET) : cards
-    console.log(`  ${limited.length} cards${cards.length > limited.length ? ` (capped from ${cards.length})` : ''}`)
+
+    let filteredCards = cards
+    if (MISSING_ONLY) {
+      const existing = await existingIdsInSet(set.setCode)
+      filteredCards = cards.filter((c) => !existing.has(c.id))
+      console.log(`  ${filteredCards.length} missing of ${cards.length} (${cards.length - filteredCards.length} already in DB)`)
+      if (filteredCards.length === 0) continue
+    }
+
+    const limited = Number.isFinite(MAX_PER_SET) ? filteredCards.slice(0, MAX_PER_SET) : filteredCards
+    if (!MISSING_ONLY) {
+      console.log(`  ${limited.length} cards${cards.length > limited.length ? ` (capped from ${cards.length})` : ''}`)
+    }
 
     for (const card of limited) {
       try {
