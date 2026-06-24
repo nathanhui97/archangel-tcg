@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { useAuth } from './auth'
-import type { Binder, BinderItem, Card, Condition } from '@/types'
+import type { Binder, BinderItem, BinderType, Card, Condition } from '@/types'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Binders list (the current user's binders)
@@ -53,14 +53,18 @@ export function useMyBinders() {
   return { binders, loading, error, refresh: load }
 }
 
-export async function createBinder(name: string, isPublic: boolean): Promise<Binder> {
+export async function createBinder(
+  name: string,
+  isPublic: boolean,
+  binderType: BinderType = 'collection'
+): Promise<Binder> {
   const trimmed = name.trim()
   if (trimmed.length === 0 || trimmed.length > 60) {
     throw new Error('Binder name must be 1–60 characters.')
   }
   const { data, error } = await supabase
     .from('binders')
-    .insert({ name: trimmed, is_public: isPublic })
+    .insert({ name: trimmed, is_public: isPublic, binder_type: binderType })
     .select()
     .single()
   if (error) throw new Error(error.message)
@@ -74,7 +78,7 @@ export async function deleteBinder(binderId: string): Promise<void> {
 
 export async function updateBinder(
   binderId: string,
-  updates: Partial<Pick<Binder, 'name' | 'is_public'>>
+  updates: Partial<Pick<Binder, 'name' | 'is_public' | 'binder_type'>>
 ): Promise<void> {
   const { error } = await supabase.from('binders').update(updates).eq('id', binderId)
   if (error) throw new Error(error.message)

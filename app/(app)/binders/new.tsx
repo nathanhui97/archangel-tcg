@@ -9,13 +9,17 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native'
-import { Stack, useRouter } from 'expo-router'
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router'
 import { createBinder } from '@/lib/binders'
+import type { BinderType } from '@/types'
 
 export default function NewBinderScreen() {
   const router = useRouter()
+  const { type } = useLocalSearchParams<{ type?: BinderType }>()
+  const binderType: BinderType = type === 'trade' ? 'trade' : 'collection'
+
   const [name, setName] = useState('')
-  const [isPublic, setIsPublic] = useState(true)
+  const [isPublic, setIsPublic] = useState(binderType === 'trade')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,7 +31,7 @@ export default function NewBinderScreen() {
     setSaving(true)
     setError(null)
     try {
-      const binder = await createBinder(name, isPublic)
+      const binder = await createBinder(name, isPublic, binderType)
       router.replace(`/(app)/binders/${binder.id}`)
     } catch (err) {
       setError((err as Error).message)
@@ -43,7 +47,7 @@ export default function NewBinderScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: 'New Binder',
+          title: binderType === 'trade' ? 'New Trade Binder' : 'New Collection',
           headerStyle: { backgroundColor: '#0f172a' },
           headerTintColor: '#ffffff',
         }}
@@ -70,8 +74,9 @@ export default function NewBinderScreen() {
           <View className="flex-1 pr-4">
             <Text className="text-white font-medium">Public</Text>
             <Text className="text-gray-500 text-xs mt-1">
-              Other players can browse this binder and see its cards for trade matching.
-              Private binders are visible only to you.
+              {binderType === 'trade'
+                ? 'Public trade binders show up in Browse for nearby traders. Keep it private until you\'re ready.'
+                : 'Public collections are visible to others. Private collections are only visible to you.'}
             </Text>
           </View>
           <Switch

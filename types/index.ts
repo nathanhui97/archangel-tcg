@@ -1,5 +1,6 @@
 export type Game = 'gundam' | 'one_piece'
 export type Condition = 'NM' | 'LP' | 'MP' | 'HP' | 'DMG'
+export type BinderType = 'collection' | 'trade'
 
 export const GAME_LABELS: Record<Game, string> = {
   gundam: 'Gundam Card Game',
@@ -12,7 +13,25 @@ export interface Profile {
   games: Game[]
   lat: number | null
   lng: number | null
+  willing_to_ship: boolean
   created_at: string
+}
+
+export interface NearbyCard {
+  card_id: string
+  card_name: string
+  card_image_url: string | null
+  card_game: Game
+  card_set_code: string | null
+  card_number: string | null
+  binder_item_id: string
+  quantity: number
+  condition: Condition
+  is_foil: boolean
+  owner_id: string
+  owner_handle: string
+  owner_willing_to_ship: boolean
+  distance_km: number | null  // null = shipper with no location set
 }
 
 export type CardType =
@@ -61,9 +80,22 @@ export interface Binder {
   id: string
   user_id: string
   name: string
+  binder_type: BinderType
   is_public: boolean
   created_at: string
   updated_at: string
+}
+
+export interface NearbyWantlistItem {
+  card_id: string
+  card_name: string
+  card_image_url: string | null
+  card_game: Game
+  card_set_code: string | null
+  card_number: string | null
+  wanter_id: string
+  wanter_handle: string
+  distance_km: number | null
 }
 
 export interface BinderItem {

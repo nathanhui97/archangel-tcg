@@ -10,11 +10,13 @@ export default function AppLayout() {
         contentStyle: { backgroundColor: '#0f172a' },
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+      {/* Tabs are the main shell — no header (tabs have their own) */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="profile-setup"
         options={{ headerShown: false, gestureEnabled: false }}
       />
+      {/* Stack screens pushed on top of tabs */}
       <Stack.Screen name="cards" options={{ headerShown: true, title: 'Browse Cards' }} />
       <Stack.Screen name="binders/index" options={{ headerShown: true, title: 'My Binders' }} />
       <Stack.Screen name="binders/new" options={{ headerShown: true, title: 'New Binder' }} />

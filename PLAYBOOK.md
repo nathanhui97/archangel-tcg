@@ -164,6 +164,7 @@ Migrations live in `supabase/migrations/`, numbered in order. They are all idemp
 | `0004_add_one_piece.sql` | adds OP columns + expands game/card_type CHECKs |
 | `0005_binders.sql` | binders + binder_items with strict per-row RLS |
 | `0006_wantlist.sql` | wantlist_items with read-anyone-write-own RLS |
+| `0007_shipping_and_nearby.sql` | `willing_to_ship` on profiles + `earthdistance` ext + `get_nearby_cards` RPC |
 
 ### Useful diagnostic queries
 
