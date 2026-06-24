@@ -1,6 +1,9 @@
 # ArchangelTCG — Agent Context
 
-Full knowledge base: `doc/ai-agent-knowledge-base.md` — read it before every task.
+Three companion files, read them in this order at session start:
+1. `STATUS.md` — current milestone state, what's done, what's next
+2. `PLAYBOOK.md` — how to do common operational tasks (scrape, test, debug, run app)
+3. `doc/ai-agent-knowledge-base.md` — full project rules and conventions
 
 ## Quick reference
 

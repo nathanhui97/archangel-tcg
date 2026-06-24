@@ -117,7 +117,8 @@ Matches are **computed by query, never stored.**
 
 1. Read this file (`STATUS.md`)
 2. Read `CLAUDE.md` for code conventions
-3. Read `doc/ai-agent-knowledge-base.md` for full project rules
-4. Check the milestone table above for where to pick up
-5. **Always build one milestone at a time.** Never scaffold ahead.
-6. **Security first** — see "Security principles" section above.
+3. Read `PLAYBOOK.md` for **how to do common operational tasks** (scrape, test, debug)
+4. Read `doc/ai-agent-knowledge-base.md` for full project rules
+5. Check the milestone table above for where to pick up
+6. **Always build one milestone at a time.** Never scaffold ahead.
+7. **Security first** — see "Security principles" section above.
