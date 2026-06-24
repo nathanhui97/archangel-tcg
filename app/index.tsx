@@ -5,9 +5,9 @@ export default function LandingScreen() {
   return (
     <View className="flex-1 bg-gray-950 items-center justify-center px-6">
       <View className="items-center mb-14">
-        <Text className="text-5xl font-bold text-white tracking-tight">ArchangelTCG</Text>
-        <Text className="text-gray-400 text-lg mt-3">Trade cards with local players</Text>
-        <Text className="text-gray-500 text-sm mt-1">Gundam Card Game</Text>
+        <Text className="text-5xl font-bold text-white tracking-tight">Bindar</Text>
+        <Text className="text-gray-400 text-lg mt-3">A radar for binders near you</Text>
+        <Text className="text-gray-500 text-sm mt-1">Gundam · One Piece</Text>
       </View>
 
       <View className="w-full max-w-xs">

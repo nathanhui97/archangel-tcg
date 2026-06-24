@@ -1,4 +1,4 @@
-# ArchangelTCG — Operations Playbook
+# Bindar — Operations Playbook
 
 > Common tasks, the commands that do them, and what to do when something breaks.
 >

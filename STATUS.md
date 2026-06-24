@@ -1,4 +1,6 @@
-# ArchangelTCG — Project Status
+# Bindar — Project Status
+
+> *Project codename was "ArchangelTCG" during early dev. Locked the real name on 2026-06-24: **Bindar** (Binder + Radar). Theme black + phosphor green to come at Milestone 9. Folder name and GitHub repo URL still say `archangel-tcg` — that's just the path, not the brand.*
 
 > Keep this file updated as milestones are completed. Read it at the start of every session.
 
@@ -12,7 +14,7 @@ A local trading card game app (iOS + Android) where **Gundam Card Game** players
 
 ## Key decisions (locked in)
 
-- **App name:** "ArchangelTCG" is a placeholder — final name TBD, swap during Milestone 9
+- **App name: Bindar** (Binder + Radar). Locked 2026-06-24. Black + phosphor green theme planned for Milestone 9 polish (placeholder dark gray + indigo for now).
 - **Platform:** iOS + Android from one Expo codebase. Mac available for local simulator.
 - **Launch game:** Gundam Card Game only. One Piece parked for post-launch.
 - **Binders:** Users can create as many named binders as they want, each toggled public or private

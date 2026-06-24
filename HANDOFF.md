@@ -1,7 +1,9 @@
-# ArchangelTCG — Handoff Doc
+# Bindar — Handoff Doc
 
 > Use this when picking up the project on a new machine or in a new session.
-> Last updated: 2026-06-24 after a long debugging session.
+> Last updated: 2026-06-24 — locked the product name as **Bindar** (Binder + Radar).
+> Theme will be black + phosphor green at Milestone 9. Folder + repo URL still
+> say `archangel-tcg`; that's the codename, not the brand.
 
 ---
 

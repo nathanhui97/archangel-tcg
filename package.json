@@ -1,5 +1,5 @@
 {
-  "name": "archangel-tcg",
+  "name": "bindar",
   "version": "1.0.0",
   "main": "./index.js",
   "scripts": {
@@ -24,6 +24,7 @@
     "nativewind": "^4.1.23",
     "react": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-safe-area-context": "*",
     "react-native-url-polyfill": "^2.0.0",
     "tailwindcss": "^3.4.0"
   },

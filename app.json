@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "ArchangelTCG",
-    "slug": "archangel-tcg",
+    "name": "Bindar",
+    "slug": "bindar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "archangeltcg",
+    "scheme": "bindar",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
     "splash": {
@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.archangeltcg.app"
+      "bundleIdentifier": "com.bindar.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
-      "package": "com.archangeltcg.app"
+      "package": "com.bindar.app"
     },
     "plugins": [
       "expo-router",

@@ -1,5 +1,5 @@
 /**
- * End-to-end smoke test for the ArchangelTCG backend.
+ * End-to-end smoke test for the Bindar backend.
  *
  * Creates two test users (Alice + Bob), signs them in with the public anon
  * key, and walks every CRUD path the app actually uses. Verifies that:
@@ -36,8 +36,8 @@ if (!SUPABASE_URL || !SERVICE_KEY || !ANON_KEY) {
 
 // Distinctive emails so cleanup can find them
 const RUN_ID = Date.now().toString(36)
-const ALICE_EMAIL = `smoke-alice-${RUN_ID}@archangel.test`
-const BOB_EMAIL = `smoke-bob-${RUN_ID}@archangel.test`
+const ALICE_EMAIL = `smoke-alice-${RUN_ID}@bindar.test`
+const BOB_EMAIL = `smoke-bob-${RUN_ID}@bindar.test`
 const PASSWORD = 'SmokeTest!123Long'
 
 // Service-role client bypasses RLS, used for setup + teardown only

@@ -42,7 +42,7 @@ const imageUrl  = (id: string) => `${BASE_URL}/en/images/cards/card/${encodeURIC
 
 const BUCKET = 'card-images'
 const POLITE_DELAY_MS = 400
-const USER_AGENT = 'Mozilla/5.0 ArchangelTCG-Seeder (contact: github.com/nathanhui97/archangel-tcg)'
+const USER_AGENT = 'Mozilla/5.0 Bindar-Seeder (contact: github.com/nathanhui97/archangel-tcg)'
 
 // CLI args:  --max=N (cap cards per set, useful for first-run smoke testing)
 //            --sets=GD01,ST04 (only process these set codes)

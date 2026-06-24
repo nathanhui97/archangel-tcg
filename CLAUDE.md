@@ -1,4 +1,6 @@
-# ArchangelTCG — Agent Context
+# Bindar — Agent Context
+
+> Product name is **Bindar** (Binder + Radar). Codename in this repo's folder + GitHub URL is `archangel-tcg` — historical, leave as-is. Use "Bindar" in any user-facing string, doc, or new file.
 
 Four companion files, read them in this order at session start:
 1. `STATUS.md` — current milestone state, what's done, what's next

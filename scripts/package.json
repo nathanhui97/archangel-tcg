@@ -1,5 +1,5 @@
 {
-  "name": "archangel-tcg-scripts",
+  "name": "bindar-scripts",
   "version": "1.0.0",
   "private": true,
   "description": "Server-side scripts (seed, sync). Runs locally, NEVER bundled in the mobile app.",

@@ -44,7 +44,7 @@ const imageUrl = (id: string) => `${BASE_URL}/images/cardlist/card/${encodeURICo
 
 const BUCKET = 'card-images'
 const POLITE_DELAY_MS = 300
-const USER_AGENT = 'Mozilla/5.0 ArchangelTCG-Seeder (contact: github.com/nathanhui97/archangel-tcg)'
+const USER_AGENT = 'Mozilla/5.0 Bindar-Seeder (contact: github.com/nathanhui97/archangel-tcg)'
 
 // CLI flags
 const MAX_PER_SET = (() => {
