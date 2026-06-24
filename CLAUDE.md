@@ -1,9 +1,10 @@
 # ArchangelTCG — Agent Context
 
-Three companion files, read them in this order at session start:
+Four companion files, read them in this order at session start:
 1. `STATUS.md` — current milestone state, what's done, what's next
-2. `PLAYBOOK.md` — how to do common operational tasks (scrape, test, debug, run app)
-3. `doc/ai-agent-knowledge-base.md` — full project rules and conventions
+2. `HANDOFF.md` — context for transitioning machines or resuming after a break
+3. `PLAYBOOK.md` — how to do common operational tasks (scrape, test, debug, run app)
+4. `doc/ai-agent-knowledge-base.md` — full project rules and conventions
 
 ## Quick reference
 
