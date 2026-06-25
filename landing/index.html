@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bindar — A radar for binders near you</title>
+<meta name="description" content="Bindar finds local trading-card trades on your radar. List what you've got, flag what you want, and meet nearby players to trade in person — no shipping, no markups. Gundam Card Game beta.">
+<meta property="og:title" content="Bindar — Find local card trades on your radar">
+<meta property="og:description" content="List your binder, flag your wants, match with nearby traders, meet at your local shop. Gundam first. Sign up for the beta.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:#050706;color:#E6F2EA;font-family:'Space Grotesk',sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  input::placeholder{color:#4C5A52}
+  @keyframes sweep{to{transform:rotate(360deg)}}
+  @keyframes ping{0%{transform:scale(.5);opacity:.8}100%{transform:scale(2.2);opacity:0}}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+  /* --- landing app: state toggling, inputs, chips --- */
+  [hidden]{display:none !important}
+  [data-step][hidden]{display:none}
+  #email:focus,#city:focus,#lgs:focus{border-color:#35F58A;box-shadow:0 0 0 4px rgba(53,245,138,.08)}
+  .store-badge:hover{border-color:rgba(53,245,138,.5)}
+  .chip{height:40px;padding:0 16px;display:inline-flex;align-items:center;border-radius:11px;font:600 13px 'Space Grotesk',sans-serif;cursor:pointer;user-select:none;transition:all .15s;background:#0E1512;border:1px solid rgba(120,255,180,.14);color:#8FA399}
+  .chip.selected{background:rgba(53,245,138,.14);border:1px solid #35F58A;color:#35F58A}
+  button{font-family:'Space Grotesk',sans-serif}
+</style>
+<noscript><style>[data-reveal]{opacity:1 !important;transform:none !important}</style></noscript>
+</head>
+<body>
+<!-- NAV -->
+<div style="position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);background:rgba(5,7,6,.72);border-bottom:1px solid rgba(120,255,180,.08)">
+  <div style="max-width:1120px;margin:0 auto;padding:15px 24px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:11px">
+      <svg width="30" height="30" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="34" r="24" stroke="#35F58A" stroke-width="3" opacity="0.3"/><circle cx="32" cy="34" r="13.5" stroke="#35F58A" stroke-width="3" opacity="0.55"/><circle cx="32" cy="34" r="3.6" fill="#35F58A"/><g transform="rotate(-14 45 17)"><rect x="38.5" y="8.5" width="13" height="17" rx="2.5" fill="#35F58A"/></g></svg>
+      <span style="font:700 20px 'Space Grotesk';letter-spacing:.01em">BINDAR</span>
+      <span style="height:18px;padding:0 7px;display:flex;align-items:center;border-radius:5px;background:rgba(53,245,138,.14);border:1px solid rgba(53,245,138,.4);font:700 9px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.12em">BETA</span>
+    </div>
+    <a href="#join" style="height:40px;padding:0 18px;display:flex;align-items:center;border-radius:11px;background:#35F58A;color:#04140C;font:700 13px 'Space Grotesk';text-decoration:none;box-shadow:0 0 20px rgba(53,245,138,.25)">Sign up for beta</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<div style="position:relative">
+  <div style="position:absolute;inset:0;background:radial-gradient(60% 50% at 78% 30%,rgba(53,245,138,.08),transparent 70%);pointer-events:none"></div>
+  <div style="max-width:1120px;margin:0 auto;padding:64px 24px 64px;position:relative">
+    <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:center">
+      <!-- LEFT -->
+      <div style="flex:1;min-width:330px">
+          <span style="display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 12px;border-radius:8px;background:rgba(53,245,138,.1);border:1px solid rgba(53,245,138,.3);font:600 11px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.12em">PRIVATE BETA · GUNDAM CARD GAME</span>
+          <h1 style="margin:22px 0 0;font-weight:700;font-size:clamp(38px,5.2vw,58px);line-height:1.04;letter-spacing:-.02em">Find local card trades on your radar.</h1>
+          <p style="margin:20px 0 0;font-size:17px;line-height:1.6;color:#9FB3A8;max-width:480px">List the cards you've got, flag the ones you want, and Bindar shows you who nearby can trade. Meet up at your local shop — no shipping, no markups.</p>
+        <div style="margin-top:30px;max-width:460px">
+          <button id="open-form" type="button" style="width:100%;height:56px;padding:0 24px;border:none;border-radius:14px;background:#35F58A;color:#04140C;font:700 16px 'Space Grotesk';cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 0 26px rgba(53,245,138,.3)">Join the beta <span style="font:700 17px 'JetBrains Mono',monospace">&#8594;</span></button>
+        </div>
+          <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:12px">
+            <span class="store-badge" style="display:inline-flex;align-items:center;gap:11px;height:54px;padding:0 18px;border-radius:13px;background:#0E1512;border:1px solid rgba(120,255,180,.18)"><svg width="23" height="23" viewBox="0 0 24 24" fill="#E6F2EA"><path d="M17.05 12.78c-.02-2.1 1.72-3.11 1.8-3.16-1-1.45-2.5-1.65-3.05-1.67-1.3-.13-2.53.76-3.19.76-.66 0-1.67-.74-2.75-.72-1.41.02-2.72.82-3.45 2.08-1.47 2.56-.38 6.34 1.05 8.42.7 1.02 1.53 2.16 2.62 2.12 1.05-.04 1.45-.68 2.72-.68 1.27 0 1.63.68 2.74.66 1.13-.02 1.85-1.04 2.54-2.06.8-1.18 1.13-2.32 1.15-2.38-.03-.01-2.2-.85-2.22-3.37z"/><path d="M15.1 6.1c.58-.7.97-1.68.86-2.65-.83.03-1.84.55-2.44 1.25-.54.62-1.01 1.61-.88 2.56.93.07 1.88-.47 2.46-1.16z"/></svg><span style="display:flex;flex-direction:column;line-height:1.12"><span style="font:600 9px 'JetBrains Mono',monospace;color:#7B8C82;letter-spacing:.12em">COMING SOON</span><span style="font:700 16px 'Space Grotesk';color:#E6F2EA">App Store</span></span></span>
+            <span class="store-badge" style="display:inline-flex;align-items:center;gap:11px;height:54px;padding:0 18px;border-radius:13px;background:#0E1512;border:1px solid rgba(120,255,180,.18)"><svg width="21" height="21" viewBox="0 0 24 24"><path d="M4 3.5v17a1 1 0 0 0 1.5.87l14.5-8.5a1 1 0 0 0 0-1.74L5.5 2.63A1 1 0 0 0 4 3.5z" fill="#35F58A"/></svg><span style="display:flex;flex-direction:column;line-height:1.12"><span style="font:600 9px 'JetBrains Mono',monospace;color:#7B8C82;letter-spacing:.12em">COMING SOON</span><span style="font:700 16px 'Space Grotesk';color:#E6F2EA">Google Play</span></span></span>
+          </div>
+      </div>
+      <!-- RIGHT radar -->
+      <div style="flex:1;min-width:330px;display:flex;justify-content:center">
+        <div style="position:relative;width:480px;height:540px;flex-shrink:0">
+          <div style="position:absolute;left:50%;top:48%;width:440px;height:440px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(53,245,138,.13),transparent 60%)"></div>
+          <div style="position:absolute;left:50%;top:48%;width:372px;height:372px;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(53,245,138,.1)"></div>
+          <div style="position:absolute;left:50%;top:48%;width:372px;height:372px;transform:translate(-50%,-50%);border-radius:50%;background:conic-gradient(from 0deg,rgba(53,245,138,0) 0deg,rgba(53,245,138,0) 300deg,rgba(53,245,138,.14) 360deg);animation:sweep 6.5s linear infinite"></div>
+          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) translateX(-104px) rotate(-9deg) scale(.9);z-index:1">
+            <div style="width:206px;height:436px;position:relative;filter:drop-shadow(0 30px 50px rgba(0,0,0,.6))">
+              <div style="position:absolute;top:0;left:0;transform:scale(.606);transform-origin:top left"><div style="position:relative;width:340px;height:720px;background:#050706;border-radius:44px;border:1px solid rgba(120,255,180,.14);box-shadow:0 0 0 2px #000,0 26px 60px rgba(0,0,0,.6),inset 0 0 0 6px #0a0d0b;overflow:hidden">
+    <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:94px;height:26px;background:#000;border-radius:16px;z-index:30"></div>
+    <div style="position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px;z-index:20"><span style="font:600 14px 'JetBrains Mono',monospace;color:#E6F2EA">9:41</span><span style="display:flex;align-items:flex-end;gap:7px"><span style="display:flex;align-items:flex-end;gap:2px;height:11px"><i style="display:block;width:3px;height:5px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:7px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:9px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:11px;background:#E6F2EA;border-radius:1px"></i></span><span style="display:block;width:23px;height:11px;border:1.5px solid #E6F2EA;border-radius:3px;position:relative"><i style="position:absolute;left:1.5px;top:1.5px;bottom:1.5px;right:6px;background:#35F58A;border-radius:1px"></i><i style="position:absolute;right:-3px;top:3px;width:2px;height:5px;background:#E6F2EA;border-radius:0 1px 1px 0"></i></span></span></div>
+    <!-- nav -->
+    <div style="position:absolute;top:48px;left:0;right:0;height:54px;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid rgba(120,255,180,.08)">
+      <button style="width:32px;height:32px;border-radius:9px;border:none;background:transparent;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E6F2EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div style="width:34px;height:34px;border-radius:50%;background:rgba(56,225,245,.16);border:1px solid rgba(56,225,245,.34);flex-shrink:0;display:flex;align-items:center;justify-content:center"><span style="font:700 14px 'Space Grotesk';color:#38E1F5">C</span></div>
+      <div style="flex:1"><div style="font:700 14px 'JetBrains Mono',monospace;color:#E6F2EA">@cardsbykenji</div><div style="font:400 11px 'Space Grotesk';color:#7B8C82">2.3 km away</div></div>
+    </div>
+    <!-- card context banner -->
+    <div style="position:absolute;top:102px;left:0;right:0;display:flex;align-items:center;gap:10px;padding:10px 16px;background:#0B110E;border-bottom:1px solid rgba(120,255,180,.08)">
+      <div style="width:30px;height:42px;border-radius:5px;background:#111A15 url('assets/cards/GD01-001.webp') center/cover;border:1px solid rgba(120,255,180,.14);flex-shrink:0"></div>
+      <div style="flex:1"><div style="font:700 13px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-001 <span style="color:#C9A84A;font-weight:400">Foil</span></div><div style="font:400 11px 'Space Grotesk';color:#7B8C82">From their Gundam Trade Binder</div></div>
+      <span style="font:600 11px 'Space Grotesk';color:#35F58A">View</span>
+    </div>
+    <!-- messages -->
+    <div style="position:absolute;top:166px;left:0;right:0;bottom:70px;padding:16px 16px 8px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+      <div style="text-align:center;font:500 10px 'JetBrains Mono',monospace;color:#4C5A52;letter-spacing:.1em;margin-bottom:2px">TODAY</div>
+      <!-- proposal card message -->
+      <div style="align-self:flex-end;display:flex;flex-direction:column;align-items:flex-end;gap:3px;width:86%">
+        <div style="width:100%;border-radius:15px 15px 4px 15px;background:#0E1512;border:1px solid rgba(53,245,138,.3);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 13px;border-bottom:1px solid rgba(120,255,180,.1)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4l3 3-3 3M20 7H8M7 20l-3-3 3-3M4 17h12"/></svg><span style="flex:1;font:700 13px 'Space Grotesk';color:#E6F2EA">Trade proposal</span><span style="height:18px;padding:0 7px;display:flex;align-items:center;border-radius:5px;background:rgba(245,194,74,.12);border:1px solid rgba(245,194,74,.35);font:700 9px 'JetBrains Mono',monospace;color:#F5C24A">PENDING</span></div>
+          <div style="padding:11px 13px;display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;align-items:center;gap:9px"><span style="font:600 9px 'JetBrains Mono',monospace;color:#8FA399;letter-spacing:.1em;width:42px">GIVE</span><span style="font:700 12px 'JetBrains Mono',monospace;color:#E6F2EA">GD03-056</span></div>
+            <div style="display:flex;align-items:center;gap:9px"><span style="font:600 9px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.1em;width:42px">GET</span><span style="font:700 12px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-001 <span style="color:#C9A84A;font-weight:400">Foil</span></span></div>
+          </div>
+          <button style="width:100%;height:38px;border:none;border-top:1px solid rgba(120,255,180,.1);background:rgba(53,245,138,.08);color:#35F58A;font:700 12px 'Space Grotesk';display:flex;align-items:center;justify-content:center;gap:6px">View details <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+        <span style="font:500 10px 'JetBrains Mono',monospace;color:#4C5A52;padding-right:4px">You proposed · 9:32</span>
+      </div>
+      <div style="align-self:flex-start;max-width:78%;padding:10px 13px;border-radius:15px 15px 15px 4px;background:#141C18;color:#E6F2EA;font:500 13px 'Space Grotesk';line-height:1.4;border:1px solid rgba(120,255,180,.08)">Looks good! Meet at Dragon's Den Saturday?</div>
+      <div style="align-self:flex-end;display:flex;flex-direction:column;align-items:flex-end;gap:2px"><div style="max-width:78%;padding:10px 13px;border-radius:15px 15px 4px 15px;background:#35F58A;color:#04140C;font:500 13px 'Space Grotesk';line-height:1.4">Works for me — 2pm?</div><span style="font:500 10px 'JetBrains Mono',monospace;color:#4C5A52;padding-right:4px">Delivered</span></div>
+    </div>
+    <!-- input -->
+    <div style="position:absolute;bottom:0;left:0;right:0;height:70px;background:rgba(6,9,7,.94);border-top:1px solid rgba(120,255,180,.1);display:flex;align-items:center;gap:9px;padding:0 14px 14px;padding-top:8px">
+      <div style="flex:1;height:42px;display:flex;align-items:center;padding:0 15px;border-radius:21px;background:#141C18;border:1px solid rgba(120,255,180,.12);font:400 14px 'Space Grotesk';color:#5C6B62">Message…</div>
+      <button style="width:42px;height:42px;border-radius:50%;border:none;background:#35F58A;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(53,245,138,.3);flex-shrink:0"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#04140C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+    </div>
+  </div></div>
+            </div>
+          </div>
+          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) translateX(104px) rotate(9deg) scale(.9);z-index:1">
+            <div style="width:206px;height:436px;position:relative;filter:drop-shadow(0 30px 50px rgba(0,0,0,.6))">
+              <div style="position:absolute;top:0;left:0;transform:scale(.606);transform-origin:top left"><div style="position:relative;width:340px;height:720px;background:#050706;border-radius:44px;border:1px solid rgba(120,255,180,.14);box-shadow:0 0 0 2px #000,0 26px 60px rgba(0,0,0,.6),inset 0 0 0 6px #0a0d0b;overflow:hidden">
+    <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:94px;height:26px;background:#000;border-radius:16px;z-index:30"></div>
+    <div style="position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px;z-index:20"><span style="font:600 14px 'JetBrains Mono',monospace;color:#E6F2EA">9:41</span><span style="display:flex;align-items:flex-end;gap:7px"><span style="display:flex;align-items:flex-end;gap:2px;height:11px"><i style="display:block;width:3px;height:5px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:7px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:9px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:11px;background:#E6F2EA;border-radius:1px"></i></span><span style="display:block;width:23px;height:11px;border:1.5px solid #E6F2EA;border-radius:3px;position:relative"><i style="position:absolute;left:1.5px;top:1.5px;bottom:1.5px;right:6px;background:#35F58A;border-radius:1px"></i><i style="position:absolute;right:-3px;top:3px;width:2px;height:5px;background:#E6F2EA;border-radius:0 1px 1px 0"></i></span></span></div>
+    <div style="position:absolute;top:48px;left:0;right:0;height:48px;display:flex;align-items:center;gap:8px;padding:0 14px">
+      <button style="width:36px;height:36px;border-radius:10px;border:none;background:transparent;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E6F2EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div><div style="font:600 17px 'Space Grotesk';color:#E6F2EA">Propose trade</div><div style="font:500 11px 'JetBrains Mono',monospace;color:#7B8C82">to @cardsbykenji</div></div>
+    </div>
+    <div style="position:absolute;top:104px;left:0;right:0;bottom:82px;overflow:hidden;padding:8px 20px 0">
+      <div style="display:flex;background:#0E1512;border-radius:11px;padding:3px;border:1px solid rgba(120,255,180,.1);margin-bottom:14px">
+        <span style="flex:1;height:34px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;background:rgba(53,245,138,.14);font:600 12px 'Space Grotesk';color:#35F58A"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4l3 3-3 3M20 7H8M7 20l-3-3 3-3M4 17h12"/></svg>Trade cards</span>
+        <span style="flex:1;height:34px;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:9px;font:500 12px 'Space Grotesk';color:#8FA399"><span style="font:700 13px 'JetBrains Mono',monospace">$</span>Offer cash</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px"><span style="font:600 11px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.14em">YOU GIVE</span><span style="font:500 11px 'Space Grotesk';color:#6F8579">from your binders</span></div>
+      <div style="display:flex;align-items:center;gap:11px;padding:10px;border-radius:12px;background:#0E1512;border:1px solid rgba(120,255,180,.12);margin-bottom:8px">
+        <div style="width:38px;height:52px;border-radius:6px;background:#111A15 url('assets/cards/GD03-056.webp') center/cover;border:1px solid rgba(120,255,180,.12);flex-shrink:0"></div>
+        <div style="flex:1"><div style="font:700 14px 'JetBrains Mono',monospace;color:#E6F2EA">GD03-056</div><div style="margin-top:2px;font:400 11px 'Space Grotesk';color:#7B8C82">Near Mint · ×1</div></div>
+        <button style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(255,107,107,.1);display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B6B" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:7px;height:42px;border-radius:12px;border:1px dashed rgba(120,255,180,.22);font:500 12px 'Space Grotesk';color:#6F8579"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6F8579" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add a card you'll give</div>
+      <!-- swap -->
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;margin:16px 0">
+        <div style="position:absolute;left:0;right:0;height:1px;background:rgba(120,255,180,.1)"></div>
+        <div style="position:relative;width:38px;height:38px;border-radius:50%;background:#0E1512;border:1px solid rgba(53,245,138,.3);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4l3 3-3 3M20 7H8M7 20l-3-3 3-3M4 17h12"/></svg></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px"><span style="font:600 11px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.14em">YOU GET</span><span style="font:500 11px 'Space Grotesk';color:#6F8579">from their binder</span></div>
+      <div style="display:flex;align-items:center;gap:11px;padding:10px;border-radius:12px;background:#0E1512;border:1px solid rgba(120,255,180,.12);margin-bottom:8px">
+        <div style="width:38px;height:52px;border-radius:6px;background:#111A15 url('assets/cards/GD01-001.webp') center/cover;border:1px solid rgba(120,255,180,.12);flex-shrink:0"></div>
+        <div style="flex:1"><div style="font:700 14px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-001 <span style="color:#C9A84A;font-weight:400">Foil</span></div><div style="margin-top:2px;font:400 11px 'Space Grotesk';color:#7B8C82">Near Mint · ×1</div></div>
+        <button style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(255,107,107,.1);display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B6B" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:7px;height:42px;border-radius:12px;border:1px dashed rgba(120,255,180,.22);font:500 12px 'Space Grotesk';color:#6F8579;margin-bottom:14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6F8579" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add a card you want</div>
+      <div style="display:flex;align-items:center;gap:8px;font:500 12px 'Space Grotesk';color:#6F8579"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6F8579" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .8-1 1.7" stroke-linecap="round"/><circle cx="12" cy="16.5" r=".6" fill="#6F8579"/></svg>Optionally add cash to even it out</div>
+    </div>
+    <div style="position:absolute;bottom:0;left:0;right:0;height:82px;background:rgba(6,9,7,.96);border-top:1px solid rgba(120,255,180,.1);display:flex;align-items:center;gap:12px;padding:0 18px 20px;padding-top:12px">
+      <span style="font:600 12px 'JetBrains Mono',monospace;color:#7B8C82">1 <span style="color:#4C5A52">for</span> 1</span>
+      <button style="flex:1;height:50px;border-radius:14px;border:none;background:#35F58A;color:#04140C;font:700 15px 'Space Grotesk';box-shadow:0 0 22px rgba(53,245,138,.3)">Send proposal</button>
+    </div>
+  </div></div>
+            </div>
+          </div>
+          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-1deg);z-index:3">
+            <div style="width:206px;height:436px;position:relative;filter:drop-shadow(0 40px 70px rgba(0,0,0,.75))">
+              <div style="position:absolute;top:0;left:0;transform:scale(.606);transform-origin:top left"><div style="position:relative;width:340px;height:720px;background:#050706;border-radius:44px;border:1px solid rgba(120,255,180,.14);box-shadow:0 0 0 2px #000,0 26px 60px rgba(0,0,0,.6),inset 0 0 0 6px #0a0d0b;overflow:hidden">
+    <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:94px;height:26px;background:#000;border-radius:16px;z-index:30"></div>
+    <div style="position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px;z-index:20"><span style="font:600 14px 'JetBrains Mono',monospace;color:#E6F2EA">9:41</span><span style="display:flex;align-items:flex-end;gap:7px"><span style="display:flex;align-items:flex-end;gap:2px;height:11px"><i style="display:block;width:3px;height:5px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:7px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:9px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:11px;background:#E6F2EA;border-radius:1px"></i></span><span style="display:block;width:23px;height:11px;border:1.5px solid #E6F2EA;border-radius:3px;position:relative"><i style="position:absolute;left:1.5px;top:1.5px;bottom:1.5px;right:6px;background:#35F58A;border-radius:1px"></i><i style="position:absolute;right:-3px;top:3px;width:2px;height:5px;background:#E6F2EA;border-radius:0 1px 1px 0"></i></span></span></div>
+    <!-- header -->
+    <div style="position:absolute;top:48px;left:0;right:0;padding:14px 20px 12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font:700 24px 'Space Grotesk';color:#E6F2EA">Browse</span>
+        <span style="display:flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:9px;background:rgba(53,245,138,.1);border:1px solid rgba(53,245,138,.25);font:600 12px 'JetBrains Mono',monospace;color:#35F58A"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="1.8"><circle cx="12" cy="12" r="2" fill="#35F58A" stroke="none"/><circle cx="12" cy="12" r="6" opacity=".6"/></svg>25 km</span>
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;height:42px;padding:0 14px;border-radius:12px;background:#0E1512;border:1px solid rgba(120,255,180,.14)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6F8579" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span style="font:400 14px 'Space Grotesk';color:#5C6B62">Search cards…</span></div>
+      <div style="margin-top:11px;display:flex;gap:7px">
+        <span style="height:30px;padding:0 14px;display:flex;align-items:center;border-radius:9px;background:rgba(53,245,138,.14);border:1px solid #35F58A;font:600 12px 'Space Grotesk';color:#35F58A">All</span>
+        <span style="height:30px;padding:0 14px;display:flex;align-items:center;border-radius:9px;border:1px solid rgba(120,255,180,.14);font:500 12px 'Space Grotesk';color:#8FA399">Gundam</span>
+        <span style="height:30px;padding:0 14px;display:flex;align-items:center;border-radius:9px;border:1px solid rgba(120,255,180,.14);font:500 12px 'Space Grotesk';color:#8FA399">One Piece</span>
+      </div>
+      <div style="margin-top:9px;display:flex;gap:6px">
+        <span style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:8px;border:1px solid rgba(120,255,180,.12);font:500 11px 'JetBrains Mono',monospace;color:#6F8579">5</span>
+        <span style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:8px;border:1px solid rgba(120,255,180,.12);font:500 11px 'JetBrains Mono',monospace;color:#6F8579">10</span>
+        <span style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:8px;background:rgba(53,245,138,.14);border:1px solid #35F58A;font:600 11px 'JetBrains Mono',monospace;color:#35F58A">25 km</span>
+        <span style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:8px;border:1px solid rgba(120,255,180,.12);font:500 11px 'JetBrains Mono',monospace;color:#6F8579">50</span>
+        <span style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:8px;border:1px solid rgba(120,255,180,.12);font:500 11px 'JetBrains Mono',monospace;color:#6F8579">100</span>
+      </div>
+    </div>
+    <!-- matches entry -->
+    <div style="position:absolute;top:258px;left:0;right:0;padding:0 20px">
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:13px;background:linear-gradient(120deg,rgba(53,245,138,.16),rgba(53,245,138,.04));border:1px solid rgba(53,245,138,.4)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="1.7" style="filter:drop-shadow(0 0 5px rgba(53,245,138,.5))"><circle cx="12" cy="12" r="2.4" fill="#35F58A" stroke="none"/><circle cx="12" cy="12" r="6.5" opacity=".7"/><circle cx="12" cy="12" r="10.5" opacity=".35"/></svg>
+        <div style="flex:1"><div style="font:700 13px 'Space Grotesk';color:#E6F2EA">3 matches near you</div><div style="margin-top:1px;font:400 11px 'Space Grotesk';color:#7B8C82">Traders you can trade with now</div></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+    </div>
+    <!-- list -->
+    <div style="position:absolute;top:330px;left:0;right:0;bottom:78px;padding:4px 20px;overflow:hidden;display:flex;flex-direction:column;gap:11px">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div style="width:50px;height:70px;border-radius:7px;background:#111A15 url('assets/cards/GD01-001.webp') center/cover;border:1px solid rgba(120,255,180,.12);flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px"><span style="font:700 15px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-001</span><span style="height:18px;padding:0 7px;display:flex;align-items:center;border-radius:5px;border:1px solid #35F58A;font:700 9px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.06em">WANT</span></div>
+          <div style="margin-top:4px;font:400 12px 'Space Grotesk';color:#7B8C82">Near Mint · ×2 · <span style="color:#C9A84A">Foil</span></div>
+          <div style="margin-top:3px;font:500 12px 'JetBrains Mono',monospace;color:#8FA399">@cardsbykenji</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><span style="display:flex;align-items:center;gap:4px;font:600 13px 'JetBrains Mono',monospace;color:#35F58A"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#35F58A"><circle cx="12" cy="15" r="2.2" fill="#35F58A" stroke="none"/><path d="M7 13a6 6 0 0 1 10 0" stroke-width="1.8" stroke-linecap="round" opacity=".7"/><path d="M4 10a10 10 0 0 1 16 0" stroke-width="1.8" stroke-linecap="round" opacity=".35"/></svg>2.3 km</span></div>
+      </div>
+      <div style="height:1px;background:rgba(120,255,180,.08)"></div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div style="width:50px;height:70px;border-radius:7px;background:#111A15 url('assets/cards/GD01-118.webp') center/cover;border:1px solid rgba(120,255,180,.12);flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font:700 15px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-118</div>
+          <div style="margin-top:4px;font:400 12px 'Space Grotesk';color:#7B8C82">Lightly Played · ×1</div>
+          <div style="margin-top:3px;font:500 12px 'JetBrains Mono',monospace;color:#8FA399">@redshift_mika</div>
+        </div>
+        <span style="display:flex;align-items:center;gap:4px;font:600 13px 'JetBrains Mono',monospace;color:#35F58A"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#35F58A"><circle cx="12" cy="15" r="2.2" fill="#35F58A" stroke="none"/><path d="M7 13a6 6 0 0 1 10 0" stroke-width="1.8" stroke-linecap="round" opacity=".7"/><path d="M4 10a10 10 0 0 1 16 0" stroke-width="1.8" stroke-linecap="round" opacity=".35"/></svg>6.1 km</span>
+      </div>
+      <div style="height:1px;background:rgba(120,255,180,.08)"></div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div style="width:50px;height:70px;border-radius:7px;background:#111A15 url('assets/cards/GD01-067.webp') center/cover;border:1px solid rgba(120,255,180,.12);flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font:700 15px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-067</div>
+          <div style="margin-top:4px;font:400 12px 'Space Grotesk';color:#7B8C82">Near Mint · ×3</div>
+          <div style="margin-top:3px;font:500 12px 'JetBrains Mono',monospace;color:#8FA399">@hangar_seven</div>
+        </div>
+        <span style="display:flex;align-items:center;gap:4px;font:600 12px 'JetBrains Mono',monospace;color:#6F8579"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6F8579" stroke-width="1.8" stroke-linecap="round"><path d="M3 7h13l-3-3M21 17H8l3 3"/></svg>Ships anywhere</span>
+      </div>
+    </div>
+    <!-- tab bar -->
+    <div style="position:absolute;bottom:0;left:0;right:0;height:78px;background:rgba(6,9,7,.94);border-top:1px solid rgba(120,255,180,.12);display:flex;padding:11px 6px 22px">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:#35F58A"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="1.7" stroke-linecap="round" style="filter:drop-shadow(0 0 5px rgba(53,245,138,.6))"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.4"/><path d="M12 12l6.4-4.4"/></svg><span style="font:600 10px 'Space Grotesk'">Browse</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:#5C6B62"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#5C6B62" stroke-width="1.7" stroke-linejoin="round"><path d="M12 20s-7-4.6-7-9.3A3.7 3.7 0 0 1 12 7a3.7 3.7 0 0 1 7 3.4C19 15.4 12 20 12 20Z"/></svg><span style="font:500 10px 'Space Grotesk'">Wanted</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:#5C6B62"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#5C6B62" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l9 4.5L12 12 3 7.5z"/><path d="M3 12l9 4.5L21 12"/><path d="M3 16.5L12 21l9-4.5"/></svg><span style="font:500 10px 'Space Grotesk'">My Cards</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:#5C6B62"><span style="position:relative;display:flex"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#5C6B62" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4.5 19.5l1.3-3.7A7.5 7.5 0 1 1 20 11.5Z"/></svg><span style="position:absolute;top:-5px;right:-7px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#35F58A;color:#04140C;font:700 9px 'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;box-shadow:0 0 6px rgba(53,245,138,.6)">2</span></span><span style="font:500 10px 'Space Grotesk'">Messages</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:#5C6B62"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#5C6B62" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg><span style="font:500 10px 'Space Grotesk'">Profile</span></div>
+      </div>
+  </div></div>
+            </div>
+          </div>
+          <div style="position:absolute;top:-2px;left:128px;display:flex;align-items:center;gap:9px;padding:10px 13px;border-radius:14px;background:rgba(11,17,14,.95);border:1px solid rgba(53,245,138,.32);box-shadow:0 16px 36px rgba(0,0,0,.55);backdrop-filter:blur(6px);animation:floaty 5.8s ease-in-out .6s infinite;z-index:6">
+            <div style="width:32px;height:32px;border-radius:50%;background:rgba(56,225,245,.16);border:1px solid rgba(56,225,245,.34);display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font:700 14px 'Space Grotesk';color:#38E1F5">C</span></div>
+            <div><div style="font:700 12px 'JetBrains Mono',monospace;color:#E6F2EA">@cardsbykenji</div><div style="font:500 11px 'Space Grotesk';color:#9FB3A8">wants your <span style="color:#35F58A;font-family:'JetBrains Mono'">GD01-118</span></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<!-- SUPPORTED TCG -->
+<div style="border-top:1px solid rgba(120,255,180,.07)">
+  <div style="max-width:1120px;margin:0 auto;padding:36px 24px;display:flex;flex-direction:column;align-items:center;gap:20px">
+    <div style="font:600 12px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.18em">SUPPORTED TCG</div>
+    <div style="display:flex;align-items:center;gap:40px;flex-wrap:wrap;justify-content:center">
+      <img src="assets/logos/gundam_white.png" alt="Gundam Card Game" style="height:46px;width:auto;opacity:.92"/>
+      <span style="width:1px;height:36px;background:rgba(120,255,180,.16)"></span>
+      <img src="assets/logos/onepiece_white.png" alt="One Piece Card Game" style="height:34px;width:auto;opacity:.92"/>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<div style="border-top:1px solid rgba(120,255,180,.07);background:#070b09">
+  <div style="max-width:1080px;margin:0 auto;padding:64px 24px 30px;text-align:center">
+    <div style="font:600 12px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.16em">WHY BINDAR</div>
+    <h2 style="margin:14px 0 0;font-weight:700;font-size:clamp(28px,4vw,38px);letter-spacing:-.02em">Find it. Match it. Trade it.</h2>
+  </div>
+  <div style="max-width:1080px;margin:0 auto;padding:10px 24px 50px">
+    <div data-reveal style="opacity:0;transform:translateY(44px);transition:opacity .8s ease, transform .9s cubic-bezier(.2,.7,.2,1);display:flex;flex-wrap:wrap;gap:40px 56px;align-items:center;justify-content:center;padding:30px 0">
+      <div style="flex:1;min-width:300px;max-width:430px">
+        <span style="font:700 12px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.18em">01 · DISCOVER</span>
+        <h2 style="margin:16px 0 0;font-weight:700;font-size:clamp(28px,3.4vw,36px);line-height:1.1;letter-spacing:-.02em">Every binder near you, in one place</h2>
+        <p style="margin:16px 0 6px;font-size:16px;line-height:1.6;color:#9FB3A8">Filter by game and distance, then scroll cards in nearby public binders — art, set code, condition, foil, quantity, owner, and how far away. Pulled live, never stored.</p>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 13l4 4L19 7"/></svg><span style="font:500 14px 'Space Grotesk';color:#9FB3A8">Radius from 5 to 100 km</span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 13l4 4L19 7"/></svg><span style="font:500 14px 'Space Grotesk';color:#9FB3A8">“Want” badges on cards you’re chasing</span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 13l4 4L19 7"/></svg><span style="font:500 14px 'Space Grotesk';color:#9FB3A8">Pull to refresh as people list</span></div>
+      </div>
+      <div style="flex:0 0 auto;display:flex;justify-content:center;min-width:300px">
+        <div style="width:214px;height:454px;position:relative;filter:drop-shadow(0 30px 60px rgba(0,0,0,.6))">
+          <div style="position:absolute;top:0;left:0;transform:scale(.63);transform-origin:top left"><div style="position:relative;width:340px;height:720px;background:#050706;border-radius:44px;border:1px solid rgba(120,255,180,.14);box-shadow:0 0 0 2px #000,0 26px 60px rgba(0,0,0,.6),inset 0 0 0 6px #0a0d0b;overflow:hidden">
+    <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:94px;height:26px;background:#000;border-radius:16px;z-index:30"></div>
+    <div style="position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px;z-index:20"><span style="font:600 14px 'JetBrains Mono',monospace;color:#E6F2EA">9:41</span><span style="display:flex;align-items:flex-end;gap:7px"><span style="display:flex;align-items:flex-end;gap:2px;height:11px"><i style="display:block;width:3px;height:5px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:7px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:9px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:11px;background:#E6F2EA;border-radius:1px"></i></span><span style="display:block;width:23px;height:11px;border:1.5px solid #E6F2EA;border-radius:3px;position:relative"><i style="position:absolute;left:1.5px;top:1.5px;bottom:1.5px;right:6px;background:#35F58A;border-radius:1px"></i><i style="position:absolute;right:-3px;top:3px;width:2px;height:5px;background:#E6F2EA;border-radius:0 1px 1px 0"></i></span></span></div>
+    <!-- header -->
+    <div style="position:absolute;top:48px;left:0;right:0;padding:14px 20px 12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font:700 24px 'Space Grotesk';color:#E6F2EA">Browse</span>
+        <span style="display:flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:9px;background:rgba(53,245,138,.1);border:1px solid rgba(53,245,138,.25);font:600 12px 'JetBrains Mono',monospace;color:#35F58A"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="1.8"><circle cx="12" cy="12" r="2" fill="#35F58A" stroke="none"/><circle cx="12" cy="12" r="6" opacity=".6"/></svg>25 km</span>
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;height:42px;padding:0 14px;border-radius:12px;background:#0E1512;border:1px solid rgba(120,255,180,.14)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6F8579" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span style="font:400 14px 'Space Grotesk';color:#5C6B62">Search cards…</span></div>
+      <div style="margin-top:11px;display:flex;gap:7px">
+        <span style="height:30px;padding:0 14px;display:flex;align-items:center;border-radius:9px;background:rgba(53,245,138,.14);border:1px solid #35F58A;font:600 12px 'Space Grotesk';color:#35F58A">All</span>
+        <span style="height:30px;padding:0 14px;display:flex;align-items:center;border-radius:9px;border:1px solid rgba(120,255,180,.14);font:500 12px 'Space Grotesk';color:#8FA399">Gundam</span>
+        <span style="height:30px;padding:0 14px;display:flex;align-items:center;border-radius:9px;border:1px solid rgba(120,255,180,.14);font:500 12px 'Space Grotesk';color:#8FA399">One Piece</span>
+      </div>
+      <div style="margin-top:9px;display:flex;gap:6px">
+        <span style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:8px;border:1px solid rgba(120,255,180,.12);font:500 11px 'JetBrains Mono',monospace;color:#6F8579">5</span>
+        <span style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:8px;border:1px solid rgba(120,255,180,.12);font:500 11px 'JetBrains Mono',monospace;color:#6F8579">10</span>
+        <span style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:8px;background:rgba(53,245,138,.14);border:1px solid #35F58A;font:600 11px 'JetBrains Mono',monospace;color:#35F58A">25 km</span>
+        <span style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:8px;border:1px solid rgba(120,255,180,.12);font:500 11px 'JetBrains Mono',monospace;color:#6F8579">50</span>
+        <span style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:8px;border:1px solid rgba(120,255,180,.12);font:500 11px 'JetBrains Mono',monospace;color:#6F8579">100</span>
+      </div>
+    </div>
+    <!-- matches entry -->
+    <div style="position:absolute;top:258px;left:0;right:0;padding:0 20px">
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:13px;background:linear-gradient(120deg,rgba(53,245,138,.16),rgba(53,245,138,.04));border:1px solid rgba(53,245,138,.4)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="1.7" style="filter:drop-shadow(0 0 5px rgba(53,245,138,.5))"><circle cx="12" cy="12" r="2.4" fill="#35F58A" stroke="none"/><circle cx="12" cy="12" r="6.5" opacity=".7"/><circle cx="12" cy="12" r="10.5" opacity=".35"/></svg>
+        <div style="flex:1"><div style="font:700 13px 'Space Grotesk';color:#E6F2EA">3 matches near you</div><div style="margin-top:1px;font:400 11px 'Space Grotesk';color:#7B8C82">Traders you can trade with now</div></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+    </div>
+    <!-- list -->
+    <div style="position:absolute;top:330px;left:0;right:0;bottom:78px;padding:4px 20px;overflow:hidden;display:flex;flex-direction:column;gap:11px">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div style="width:50px;height:70px;border-radius:7px;background:#111A15 url('assets/cards/GD01-001.webp') center/cover;border:1px solid rgba(120,255,180,.12);flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px"><span style="font:700 15px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-001</span><span style="height:18px;padding:0 7px;display:flex;align-items:center;border-radius:5px;border:1px solid #35F58A;font:700 9px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.06em">WANT</span></div>
+          <div style="margin-top:4px;font:400 12px 'Space Grotesk';color:#7B8C82">Near Mint · ×2 · <span style="color:#C9A84A">Foil</span></div>
+          <div style="margin-top:3px;font:500 12px 'JetBrains Mono',monospace;color:#8FA399">@cardsbykenji</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><span style="display:flex;align-items:center;gap:4px;font:600 13px 'JetBrains Mono',monospace;color:#35F58A"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#35F58A"><circle cx="12" cy="15" r="2.2" fill="#35F58A" stroke="none"/><path d="M7 13a6 6 0 0 1 10 0" stroke-width="1.8" stroke-linecap="round" opacity=".7"/><path d="M4 10a10 10 0 0 1 16 0" stroke-width="1.8" stroke-linecap="round" opacity=".35"/></svg>2.3 km</span></div>
+      </div>
+      <div style="height:1px;background:rgba(120,255,180,.08)"></div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div style="width:50px;height:70px;border-radius:7px;background:#111A15 url('assets/cards/GD01-118.webp') center/cover;border:1px solid rgba(120,255,180,.12);flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font:700 15px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-118</div>
+          <div style="margin-top:4px;font:400 12px 'Space Grotesk';color:#7B8C82">Lightly Played · ×1</div>
+          <div style="margin-top:3px;font:500 12px 'JetBrains Mono',monospace;color:#8FA399">@redshift_mika</div>
+        </div>
+        <span style="display:flex;align-items:center;gap:4px;font:600 13px 'JetBrains Mono',monospace;color:#35F58A"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#35F58A"><circle cx="12" cy="15" r="2.2" fill="#35F58A" stroke="none"/><path d="M7 13a6 6 0 0 1 10 0" stroke-width="1.8" stroke-linecap="round" opacity=".7"/><path d="M4 10a10 10 0 0 1 16 0" stroke-width="1.8" stroke-linecap="round" opacity=".35"/></svg>6.1 km</span>
+      </div>
+      <div style="height:1px;background:rgba(120,255,180,.08)"></div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div style="width:50px;height:70px;border-radius:7px;background:#111A15 url('assets/cards/GD01-067.webp') center/cover;border:1px solid rgba(120,255,180,.12);flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font:700 15px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-067</div>
+          <div style="margin-top:4px;font:400 12px 'Space Grotesk';color:#7B8C82">Near Mint · ×3</div>
+          <div style="margin-top:3px;font:500 12px 'JetBrains Mono',monospace;color:#8FA399">@hangar_seven</div>
+        </div>
+        <span style="display:flex;align-items:center;gap:4px;font:600 12px 'JetBrains Mono',monospace;color:#6F8579"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6F8579" stroke-width="1.8" stroke-linecap="round"><path d="M3 7h13l-3-3M21 17H8l3 3"/></svg>Ships anywhere</span>
+      </div>
+    </div>
+    <!-- tab bar -->
+    <div style="position:absolute;bottom:0;left:0;right:0;height:78px;background:rgba(6,9,7,.94);border-top:1px solid rgba(120,255,180,.12);display:flex;padding:11px 6px 22px">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:#35F58A"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="1.7" stroke-linecap="round" style="filter:drop-shadow(0 0 5px rgba(53,245,138,.6))"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.4"/><path d="M12 12l6.4-4.4"/></svg><span style="font:600 10px 'Space Grotesk'">Browse</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:#5C6B62"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#5C6B62" stroke-width="1.7" stroke-linejoin="round"><path d="M12 20s-7-4.6-7-9.3A3.7 3.7 0 0 1 12 7a3.7 3.7 0 0 1 7 3.4C19 15.4 12 20 12 20Z"/></svg><span style="font:500 10px 'Space Grotesk'">Wanted</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:#5C6B62"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#5C6B62" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l9 4.5L12 12 3 7.5z"/><path d="M3 12l9 4.5L21 12"/><path d="M3 16.5L12 21l9-4.5"/></svg><span style="font:500 10px 'Space Grotesk'">My Cards</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:#5C6B62"><span style="position:relative;display:flex"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#5C6B62" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4.5 19.5l1.3-3.7A7.5 7.5 0 1 1 20 11.5Z"/></svg><span style="position:absolute;top:-5px;right:-7px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#35F58A;color:#04140C;font:700 9px 'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;box-shadow:0 0 6px rgba(53,245,138,.6)">2</span></span><span style="font:500 10px 'Space Grotesk'">Messages</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:#5C6B62"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#5C6B62" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg><span style="font:500 10px 'Space Grotesk'">Profile</span></div>
+    </div>
+  </div></div>
+        </div>
+      </div>
+    </div>
+    <div data-reveal style="opacity:0;transform:translateY(44px);transition:opacity .8s ease, transform .9s cubic-bezier(.2,.7,.2,1);display:flex;flex-wrap:wrap;flex-direction:row-reverse;gap:40px 56px;align-items:center;justify-content:center;padding:30px 0">
+      <div style="flex:1;min-width:300px;max-width:430px">
+        <span style="font:700 12px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.18em">02 · MATCH</span>
+        <h2 style="margin:16px 0 0;font-weight:700;font-size:clamp(28px,3.4vw,36px);line-height:1.1;letter-spacing:-.02em">The people you can trade with right now</h2>
+        <p style="margin:16px 0 6px;font-size:16px;line-height:1.6;color:#9FB3A8">Bindar finds the two-way overlap: someone nearby wants what you have, and has what you want. Sorted by match strength so the best deals rise first.</p>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 13l4 4L19 7"/></svg><span style="font:500 14px 'Space Grotesk';color:#9FB3A8">You-get / you-give at a glance</span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 13l4 4L19 7"/></svg><span style="font:500 14px 'Space Grotesk';color:#9FB3A8">Match-strength meter</span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 13l4 4L19 7"/></svg><span style="font:500 14px 'Space Grotesk';color:#9FB3A8">One tap to propose</span></div>
+      </div>
+      <div style="flex:0 0 auto;display:flex;justify-content:center;min-width:300px">
+        <div style="width:214px;height:454px;position:relative;filter:drop-shadow(0 30px 60px rgba(0,0,0,.6))">
+          <div style="position:absolute;top:0;left:0;transform:scale(.63);transform-origin:top left"><div style="position:relative;width:340px;height:720px;background:#050706;border-radius:44px;border:1px solid rgba(120,255,180,.14);box-shadow:0 0 0 2px #000,0 26px 60px rgba(0,0,0,.6),inset 0 0 0 6px #0a0d0b;overflow:hidden">
+    <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:94px;height:26px;background:#000;border-radius:16px;z-index:30"></div>
+    <div style="position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px;z-index:20"><span style="font:600 14px 'JetBrains Mono',monospace;color:#E6F2EA">9:41</span><span style="display:flex;align-items:flex-end;gap:7px"><span style="display:flex;align-items:flex-end;gap:2px;height:11px"><i style="display:block;width:3px;height:5px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:7px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:9px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:11px;background:#E6F2EA;border-radius:1px"></i></span><span style="display:block;width:23px;height:11px;border:1.5px solid #E6F2EA;border-radius:3px;position:relative"><i style="position:absolute;left:1.5px;top:1.5px;bottom:1.5px;right:6px;background:#35F58A;border-radius:1px"></i><i style="position:absolute;right:-3px;top:3px;width:2px;height:5px;background:#E6F2EA;border-radius:0 1px 1px 0"></i></span></span></div>
+    <div style="position:absolute;top:48px;left:0;right:0;height:50px;display:flex;align-items:center;gap:8px;padding:0 14px">
+      <button style="width:36px;height:36px;border-radius:10px;border:none;background:transparent;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E6F2EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div><div style="font:700 19px 'Space Grotesk';color:#E6F2EA">Matches</div></div>
+    </div>
+    <div style="position:absolute;top:100px;left:0;right:0;padding:0 20px 8px"><span style="font:400 12px 'Space Grotesk';color:#7B8C82">Nearby traders you have overlap with.</span></div>
+    <div style="position:absolute;top:130px;left:0;right:0;bottom:0;padding:6px 20px 20px;overflow:hidden;display:flex;flex-direction:column;gap:13px">
+      <div style="border-radius:15px;background:#0E1512;border:1px solid rgba(53,245,138,.22);padding:13px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div style="width:42px;height:42px;border-radius:50%;background:rgba(56,225,245,.16);border:1px solid rgba(56,225,245,.34);flex-shrink:0;display:flex;align-items:center;justify-content:center"><span style="font:700 18px 'Space Grotesk';color:#38E1F5">C</span></div>
+          <div style="flex:1"><div style="font:700 14px 'JetBrains Mono',monospace;color:#E6F2EA">@cardsbykenji</div><div style="margin-top:1px;display:flex;align-items:center;gap:4px;font:400 11px 'Space Grotesk';color:#35F58A"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#35F58A"><circle cx="12" cy="15" r="2.2" fill="#35F58A" stroke="none"/><path d="M7 13a6 6 0 0 1 10 0" stroke-width="1.8" stroke-linecap="round" opacity=".7"/></svg>2.3 km</div></div>
+          <div style="display:flex;align-items:flex-end;gap:2px;height:16px" title="match strength"><i style="width:3px;height:7px;background:#35F58A;border-radius:1px"></i><i style="width:3px;height:11px;background:#35F58A;border-radius:1px"></i><i style="width:3px;height:16px;background:#35F58A;border-radius:1px"></i></div>
+        </div>
+        <div style="margin-top:11px;display:flex;flex-direction:column;gap:7px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font:600 9px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.1em;width:54px">YOU GET</span><span style="display:flex;gap:5px"><span style="height:20px;padding:0 8px;display:flex;align-items:center;border-radius:6px;background:rgba(53,245,138,.1);font:600 10px 'JetBrains Mono',monospace;color:#9FB3A8">GD01-001</span><span style="height:20px;padding:0 8px;display:flex;align-items:center;border-radius:6px;background:rgba(53,245,138,.1);font:600 10px 'JetBrains Mono',monospace;color:#6F8579">+1</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font:600 9px 'JetBrains Mono',monospace;color:#8FA399;letter-spacing:.1em;width:54px">YOU GIVE</span><span style="display:flex;gap:5px"><span style="height:20px;padding:0 8px;display:flex;align-items:center;border-radius:6px;border:1px solid rgba(120,255,180,.14);font:600 10px 'JetBrains Mono',monospace;color:#9FB3A8">GD03-056</span><span style="height:20px;padding:0 8px;display:flex;align-items:center;border-radius:6px;border:1px solid rgba(120,255,180,.14);font:600 10px 'JetBrains Mono',monospace;color:#6F8579">+1</span></span></div>
+        </div>
+        <button style="margin-top:12px;width:100%;height:38px;border-radius:11px;border:none;background:#35F58A;color:#04140C;font:700 13px 'Space Grotesk';box-shadow:0 0 16px rgba(53,245,138,.22)">Propose trade</button>
+      </div>
+      <div style="border-radius:15px;background:#0E1512;border:1px solid rgba(120,255,180,.12);padding:13px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,159,107,.16);border:1px solid rgba(255,159,107,.34);flex-shrink:0;display:flex;align-items:center;justify-content:center"><span style="font:700 18px 'Space Grotesk';color:#FF9F6B">H</span></div>
+          <div style="flex:1"><div style="font:700 14px 'JetBrains Mono',monospace;color:#E6F2EA">@hangar_seven</div><div style="margin-top:1px;display:flex;align-items:center;gap:4px;font:400 11px 'Space Grotesk';color:#35F58A"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#35F58A"><circle cx="12" cy="15" r="2.2" fill="#35F58A" stroke="none"/><path d="M7 13a6 6 0 0 1 10 0" stroke-width="1.8" stroke-linecap="round" opacity=".7"/></svg>4.4 km</div></div>
+          <div style="display:flex;align-items:flex-end;gap:2px;height:16px"><i style="width:3px;height:7px;background:#35F58A;border-radius:1px"></i><i style="width:3px;height:11px;background:#35F58A;border-radius:1px"></i><i style="width:3px;height:16px;background:#2A352E;border-radius:1px"></i></div>
+        </div>
+        <div style="margin-top:11px;display:flex;flex-direction:column;gap:7px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font:600 9px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.1em;width:54px">YOU GET</span><span style="display:flex;gap:5px"><span style="height:20px;padding:0 8px;display:flex;align-items:center;border-radius:6px;background:rgba(53,245,138,.1);font:600 10px 'JetBrains Mono',monospace;color:#9FB3A8">GD01-067</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font:600 9px 'JetBrains Mono',monospace;color:#8FA399;letter-spacing:.1em;width:54px">YOU GIVE</span><span style="display:flex;gap:5px"><span style="height:20px;padding:0 8px;display:flex;align-items:center;border-radius:6px;border:1px solid rgba(120,255,180,.14);font:600 10px 'JetBrains Mono',monospace;color:#9FB3A8">GD01-118</span></span></div>
+        </div>
+        <button style="margin-top:12px;width:100%;height:38px;border-radius:11px;border:1px solid rgba(53,245,138,.35);background:transparent;color:#35F58A;font:700 13px 'Space Grotesk'">Propose trade</button>
+      </div>
+      <div style="border-radius:15px;background:#0E1512;border:1px solid rgba(120,255,180,.12);padding:13px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div style="width:42px;height:42px;border-radius:50%;background:rgba(184,148,255,.16);border:1px solid rgba(184,148,255,.34);flex-shrink:0;display:flex;align-items:center;justify-content:center"><span style="font:700 18px 'Space Grotesk';color:#B894FF">N</span></div>
+          <div style="flex:1"><div style="font:700 14px 'JetBrains Mono',monospace;color:#E6F2EA">@nova_li</div><div style="margin-top:1px;display:flex;align-items:center;gap:4px;font:400 11px 'Space Grotesk';color:#35F58A"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#35F58A"><circle cx="12" cy="15" r="2.2" fill="#35F58A" stroke="none"/><path d="M7 13a6 6 0 0 1 10 0" stroke-width="1.8" stroke-linecap="round" opacity=".7"/></svg>1.2 km</div></div>
+          <div style="display:flex;align-items:flex-end;gap:2px;height:16px"><i style="width:3px;height:7px;background:#35F58A;border-radius:1px"></i><i style="width:3px;height:11px;background:#2A352E;border-radius:1px"></i><i style="width:3px;height:16px;background:#2A352E;border-radius:1px"></i></div>
+        </div>
+        <div style="margin-top:11px;display:flex;flex-direction:column;gap:7px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font:600 9px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.1em;width:54px">YOU GET</span><span style="display:flex;gap:5px"><span style="height:20px;padding:0 8px;display:flex;align-items:center;border-radius:6px;background:rgba(53,245,138,.1);font:600 10px 'JetBrains Mono',monospace;color:#9FB3A8">ST04-001</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font:600 9px 'JetBrains Mono',monospace;color:#8FA399;letter-spacing:.1em;width:54px">YOU GIVE</span><span style="display:flex;gap:5px"><span style="height:20px;padding:0 8px;display:flex;align-items:center;border-radius:6px;border:1px solid rgba(120,255,180,.14);font:600 10px 'JetBrains Mono',monospace;color:#9FB3A8">GD03-056</span></span></div>
+        </div>
+        <button style="margin-top:12px;width:100%;height:38px;border-radius:11px;border:1px solid rgba(53,245,138,.35);background:transparent;color:#35F58A;font:700 13px 'Space Grotesk'">Propose trade</button>
+      </div>
+    </div>
+  </div></div>
+        </div>
+      </div>
+    </div>
+    <div data-reveal style="opacity:0;transform:translateY(44px);transition:opacity .8s ease, transform .9s cubic-bezier(.2,.7,.2,1);display:flex;flex-wrap:wrap;gap:40px 56px;align-items:center;justify-content:center;padding:30px 0">
+      <div style="flex:1;min-width:300px;max-width:430px">
+        <span style="font:700 12px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.18em">03 · DEAL</span>
+        <h2 style="margin:16px 0 0;font-weight:700;font-size:clamp(28px,3.4vw,36px);line-height:1.1;letter-spacing:-.02em">Propose a trade or cash, meet at your shop</h2>
+        <p style="margin:16px 0 6px;font-size:16px;line-height:1.6;color:#9FB3A8">Send a structured offer — cards for cards, or a cash amount. Lock in a time in chat, then trade in person at your local game shop.</p>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 13l4 4L19 7"/></svg><span style="font:500 14px 'Space Grotesk';color:#9FB3A8">Accept, decline or counter</span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 13l4 4L19 7"/></svg><span style="font:500 14px 'Space Grotesk';color:#9FB3A8">Cash offers, paid in person</span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 13l4 4L19 7"/></svg><span style="font:500 14px 'Space Grotesk';color:#9FB3A8">No shipping, no fees</span></div>
+      </div>
+      <div style="flex:0 0 auto;display:flex;justify-content:center;min-width:300px">
+        <div style="width:214px;height:454px;position:relative;filter:drop-shadow(0 30px 60px rgba(0,0,0,.6))">
+          <div style="position:absolute;top:0;left:0;transform:scale(.63);transform-origin:top left"><div style="position:relative;width:340px;height:720px;background:#050706;border-radius:44px;border:1px solid rgba(120,255,180,.14);box-shadow:0 0 0 2px #000,0 26px 60px rgba(0,0,0,.6),inset 0 0 0 6px #0a0d0b;overflow:hidden">
+    <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:94px;height:26px;background:#000;border-radius:16px;z-index:30"></div>
+    <div style="position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px;z-index:20"><span style="font:600 14px 'JetBrains Mono',monospace;color:#E6F2EA">9:41</span><span style="display:flex;align-items:flex-end;gap:7px"><span style="display:flex;align-items:flex-end;gap:2px;height:11px"><i style="display:block;width:3px;height:5px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:7px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:9px;background:#E6F2EA;border-radius:1px"></i><i style="display:block;width:3px;height:11px;background:#E6F2EA;border-radius:1px"></i></span><span style="display:block;width:23px;height:11px;border:1.5px solid #E6F2EA;border-radius:3px;position:relative"><i style="position:absolute;left:1.5px;top:1.5px;bottom:1.5px;right:6px;background:#35F58A;border-radius:1px"></i><i style="position:absolute;right:-3px;top:3px;width:2px;height:5px;background:#E6F2EA;border-radius:0 1px 1px 0"></i></span></span></div>
+    <!-- nav -->
+    <div style="position:absolute;top:48px;left:0;right:0;height:54px;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid rgba(120,255,180,.08)">
+      <button style="width:32px;height:32px;border-radius:9px;border:none;background:transparent;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E6F2EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div style="width:34px;height:34px;border-radius:50%;background:rgba(56,225,245,.16);border:1px solid rgba(56,225,245,.34);flex-shrink:0;display:flex;align-items:center;justify-content:center"><span style="font:700 14px 'Space Grotesk';color:#38E1F5">C</span></div>
+      <div style="flex:1"><div style="font:700 14px 'JetBrains Mono',monospace;color:#E6F2EA">@cardsbykenji</div><div style="font:400 11px 'Space Grotesk';color:#7B8C82">2.3 km away</div></div>
+    </div>
+    <!-- card context banner -->
+    <div style="position:absolute;top:102px;left:0;right:0;display:flex;align-items:center;gap:10px;padding:10px 16px;background:#0B110E;border-bottom:1px solid rgba(120,255,180,.08)">
+      <div style="width:30px;height:42px;border-radius:5px;background:#111A15 url('assets/cards/GD01-001.webp') center/cover;border:1px solid rgba(120,255,180,.14);flex-shrink:0"></div>
+      <div style="flex:1"><div style="font:700 13px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-001 <span style="color:#C9A84A;font-weight:400">Foil</span></div><div style="font:400 11px 'Space Grotesk';color:#7B8C82">From their Gundam Trade Binder</div></div>
+      <span style="font:600 11px 'Space Grotesk';color:#35F58A">View</span>
+    </div>
+    <!-- messages -->
+    <div style="position:absolute;top:166px;left:0;right:0;bottom:70px;padding:16px 16px 8px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+      <div style="text-align:center;font:500 10px 'JetBrains Mono',monospace;color:#4C5A52;letter-spacing:.1em;margin-bottom:2px">TODAY</div>
+      <!-- proposal card message -->
+      <div style="align-self:flex-end;display:flex;flex-direction:column;align-items:flex-end;gap:3px;width:86%">
+        <div style="width:100%;border-radius:15px 15px 4px 15px;background:#0E1512;border:1px solid rgba(53,245,138,.3);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 13px;border-bottom:1px solid rgba(120,255,180,.1)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4l3 3-3 3M20 7H8M7 20l-3-3 3-3M4 17h12"/></svg><span style="flex:1;font:700 13px 'Space Grotesk';color:#E6F2EA">Trade proposal</span><span style="height:18px;padding:0 7px;display:flex;align-items:center;border-radius:5px;background:rgba(245,194,74,.12);border:1px solid rgba(245,194,74,.35);font:700 9px 'JetBrains Mono',monospace;color:#F5C24A">PENDING</span></div>
+          <div style="padding:11px 13px;display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;align-items:center;gap:9px"><span style="font:600 9px 'JetBrains Mono',monospace;color:#8FA399;letter-spacing:.1em;width:42px">GIVE</span><span style="font:700 12px 'JetBrains Mono',monospace;color:#E6F2EA">GD03-056</span></div>
+            <div style="display:flex;align-items:center;gap:9px"><span style="font:600 9px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.1em;width:42px">GET</span><span style="font:700 12px 'JetBrains Mono',monospace;color:#E6F2EA">GD01-001 <span style="color:#C9A84A;font-weight:400">Foil</span></span></div>
+          </div>
+          <button style="width:100%;height:38px;border:none;border-top:1px solid rgba(120,255,180,.1);background:rgba(53,245,138,.08);color:#35F58A;font:700 12px 'Space Grotesk';display:flex;align-items:center;justify-content:center;gap:6px">View details <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+        <span style="font:500 10px 'JetBrains Mono',monospace;color:#4C5A52;padding-right:4px">You proposed · 9:32</span>
+      </div>
+      <div style="align-self:flex-start;max-width:78%;padding:10px 13px;border-radius:15px 15px 15px 4px;background:#141C18;color:#E6F2EA;font:500 13px 'Space Grotesk';line-height:1.4;border:1px solid rgba(120,255,180,.08)">Looks good! Meet at Dragon's Den Saturday?</div>
+      <div style="align-self:flex-end;display:flex;flex-direction:column;align-items:flex-end;gap:2px"><div style="max-width:78%;padding:10px 13px;border-radius:15px 15px 4px 15px;background:#35F58A;color:#04140C;font:500 13px 'Space Grotesk';line-height:1.4">Works for me — 2pm?</div><span style="font:500 10px 'JetBrains Mono',monospace;color:#4C5A52;padding-right:4px">Delivered</span></div>
+    </div>
+    <!-- input -->
+    <div style="position:absolute;bottom:0;left:0;right:0;height:70px;background:rgba(6,9,7,.94);border-top:1px solid rgba(120,255,180,.1);display:flex;align-items:center;gap:9px;padding:0 14px 14px;padding-top:8px">
+      <div style="flex:1;height:42px;display:flex;align-items:center;padding:0 15px;border-radius:21px;background:#141C18;border:1px solid rgba(120,255,180,.12);font:400 14px 'Space Grotesk';color:#5C6B62">Message…</div>
+      <button style="width:42px;height:42px;border-radius:50%;border:none;background:#35F58A;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(53,245,138,.3);flex-shrink:0"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#04140C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+    </div>
+  </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSING CTA -->
+<div style="max-width:1120px;margin:0 auto;padding:70px 24px;text-align:center">
+  <h2 style="margin:0;font-weight:700;font-size:clamp(30px,4vw,42px);letter-spacing:-.02em">Get on the radar before launch.</h2>
+  <p style="margin:14px auto 0;font-size:16px;color:#9FB3A8;max-width:460px">Gundam first, more games as the community grows. Sign up for beta and help us decide what's next.</p>
+  <a href="#join" style="margin-top:26px;display:inline-flex;align-items:center;height:54px;padding:0 28px;border-radius:14px;background:#35F58A;color:#04140C;font:700 15px 'Space Grotesk';text-decoration:none;box-shadow:0 0 30px rgba(53,245,138,.32)">Sign up for beta</a>
+  <div style="margin-top:22px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center">
+    <span style="display:inline-flex;align-items:center;gap:11px;height:52px;padding:0 18px;border-radius:13px;background:#0E1512;border:1px solid rgba(120,255,180,.18)"><svg width="22" height="22" viewBox="0 0 24 24" fill="#E6F2EA"><path d="M17.05 12.78c-.02-2.1 1.72-3.11 1.8-3.16-1-1.45-2.5-1.65-3.05-1.67-1.3-.13-2.53.76-3.19.76-.66 0-1.67-.74-2.75-.72-1.41.02-2.72.82-3.45 2.08-1.47 2.56-.38 6.34 1.05 8.42.7 1.02 1.53 2.16 2.62 2.12 1.05-.04 1.45-.68 2.72-.68 1.27 0 1.63.68 2.74.66 1.13-.02 1.85-1.04 2.54-2.06.8-1.18 1.13-2.32 1.15-2.38-.03-.01-2.2-.85-2.22-3.37z"/><path d="M15.1 6.1c.58-.7.97-1.68.86-2.65-.83.03-1.84.55-2.44 1.25-.54.62-1.01 1.61-.88 2.56.93.07 1.88-.47 2.46-1.16z"/></svg><span style="display:flex;flex-direction:column;line-height:1.12;text-align:left"><span style="font:600 9px 'JetBrains Mono',monospace;color:#7B8C82;letter-spacing:.12em">COMING SOON</span><span style="font:700 15px 'Space Grotesk';color:#E6F2EA">App Store</span></span></span>
+    <span style="display:inline-flex;align-items:center;gap:11px;height:52px;padding:0 18px;border-radius:13px;background:#0E1512;border:1px solid rgba(120,255,180,.18)"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 3.5v17a1 1 0 0 0 1.5.87l14.5-8.5a1 1 0 0 0 0-1.74L5.5 2.63A1 1 0 0 0 4 3.5z" fill="#35F58A"/></svg><span style="display:flex;flex-direction:column;line-height:1.12;text-align:left"><span style="font:600 9px 'JetBrains Mono',monospace;color:#7B8C82;letter-spacing:.12em">COMING SOON</span><span style="font:700 15px 'Space Grotesk';color:#E6F2EA">Google Play</span></span></span>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="border-top:1px solid rgba(120,255,180,.08)">
+  <div style="max-width:1120px;margin:0 auto;padding:28px 24px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <svg width="24" height="24" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="34" r="24" stroke="#35F58A" stroke-width="3.5" opacity="0.3"/><circle cx="32" cy="34" r="13.5" stroke="#35F58A" stroke-width="3.5" opacity="0.55"/><circle cx="32" cy="34" r="4" fill="#35F58A"/><g transform="rotate(-14 45 17)"><rect x="38" y="8" width="14" height="18" rx="2.5" fill="#35F58A"/></g></svg>
+      <span style="font:700 15px 'Space Grotesk'">BINDAR</span>
+      <span style="font:400 13px 'Space Grotesk';color:#5C6B62">· A radar for binders near you.</span>
+    </div>
+    <span style="font:400 12px 'JetBrains Mono',monospace;color:#4C5A52">© 2026 Bindar · Built for trading card players</span>
+  </div>
+</div>
+<!-- BETA MODAL -->
+<div id="beta-modal" hidden style="position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(2,4,3,.74);backdrop-filter:blur(6px)">
+  <div role="dialog" aria-modal="true" aria-label="Join the Bindar beta" style="position:relative;width:100%;max-width:440px;max-height:90vh;overflow:auto;background:#0B110E;border:1px solid rgba(53,245,138,.22);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.6);padding:30px 26px">
+    <button id="modal-close" type="button" aria-label="Close" style="position:absolute;top:12px;right:12px;width:34px;height:34px;border:none;border-radius:10px;background:transparent;color:#7B8C82;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+
+    <!-- STATE: form -->
+    <div data-step="form">
+      <div style="font:600 12px 'JetBrains Mono',monospace;color:#35F58A;letter-spacing:.16em">JOIN THE BETA</div>
+      <h2 style="margin:12px 0 0;font-weight:700;font-size:26px;letter-spacing:-.01em">Get on the radar</h2>
+      <p style="margin:10px 0 0;font-size:15px;line-height:1.55;color:#9FB3A8">Drop your email and city &mdash; we'll let you know the moment your area goes live.</p>
+      <form id="signup-form" style="margin-top:20px;display:flex;flex-direction:column;gap:10px">
+        <input id="email" type="email" required autocomplete="email" inputmode="email" placeholder="you@email.com" style="width:100%;height:54px;padding:0 18px;border-radius:14px;background:#0E1512;border:1px solid rgba(120,255,180,.16);color:#E6F2EA;font:500 15px 'JetBrains Mono',monospace;outline:none"/>
+        <input id="city" type="text" required autocomplete="address-level2" placeholder="Your city &mdash; e.g. Los Angeles, CA" style="width:100%;height:54px;padding:0 18px;border-radius:14px;background:#0E1512;border:1px solid rgba(120,255,180,.16);color:#E6F2EA;font:500 15px 'JetBrains Mono',monospace;outline:none"/>
+        <button id="submit-email" type="submit" style="width:100%;height:54px;padding:0 24px;border:none;border-radius:14px;background:#35F58A;color:#04140C;font:700 15px 'Space Grotesk';cursor:pointer;box-shadow:0 0 26px rgba(53,245,138,.3)">Join the beta</button>
+      </form>
+      <div id="form-error" role="alert" style="margin-top:10px;min-height:18px;font:500 13px 'Space Grotesk';color:#FF6B6B"></div>
+    </div>
+
+    <!-- STATE: survey -->
+        <div data-step="survey" hidden>
+          <div style="display:inline-flex;align-items:center;gap:9px;margin-bottom:18px"><span style="width:30px;height:30px;border-radius:50%;background:#35F58A;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#04140C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span><span style="font:700 15px 'JetBrains Mono',monospace;color:#35F58A">You're on the list — #<span data-pos>—</span></span></div>
+          <h2 style="margin:0;font-weight:700;font-size:30px;letter-spacing:-.01em">Help us build the right thing</h2>
+          <p style="margin:10px 0 0;font-size:15px;color:#9FB3A8">Takes ~30 seconds — it shapes what we ship first.</p>
+          <div style="margin-top:24px">
+            <div style="font:600 12px 'JetBrains Mono',monospace;color:#6F8579;letter-spacing:.12em;margin-bottom:11px">WHICH GAMES DO YOU PLAY?</div>
+            <div class="chips" data-group="games" data-multi="1" style="display:flex;flex-wrap:wrap;gap:9px">
+              <button type="button" class="chip" data-value="Gundam">Gundam</button>
+              <button type="button" class="chip" data-value="One Piece">One Piece</button>
+              <button type="button" class="chip" data-value="Pokémon">Pokémon</button>
+              <button type="button" class="chip" data-value="Magic">Magic</button>
+              <button type="button" class="chip" data-value="Lorcana">Lorcana</button>
+              <button type="button" class="chip" data-value="Yu-Gi-Oh">Yu-Gi-Oh</button>
+              <button type="button" class="chip" data-value="Other">Other</button>
+            </div>
+          </div>
+          <div style="margin-top:22px">
+            <div style="font:600 12px 'JetBrains Mono',monospace;color:#6F8579;letter-spacing:.12em;margin-bottom:11px">HOW OFTEN DO YOU TRADE?</div>
+            <div class="chips" data-group="freq" style="display:flex;flex-wrap:wrap;gap:9px">
+              <button type="button" class="chip" data-value="Weekly">Weekly</button>
+              <button type="button" class="chip" data-value="A few times a month">A few times a month</button>
+              <button type="button" class="chip" data-value="Occasionally">Occasionally</button>
+              <button type="button" class="chip" data-value="Not yet">Not yet</button>
+            </div>
+          </div>
+          <div style="margin-top:22px">
+            <div style="font:600 12px 'JetBrains Mono',monospace;color:#6F8579;letter-spacing:.12em;margin-bottom:11px">WHAT BEST DESCRIBES YOU?</div>
+            <div class="chips" data-group="roles" data-multi="1" style="display:flex;flex-wrap:wrap;gap:9px">
+              <button type="button" class="chip" data-value="Player">Player</button>
+              <button type="button" class="chip" data-value="Collector">Collector</button>
+              <button type="button" class="chip" data-value="Store owner">Store owner</button>
+              <button type="button" class="chip" data-value="Event organizer">Event organizer</button>
+            </div>
+          </div>
+          <div style="margin-top:22px">
+            <div style="font:600 12px 'JetBrains Mono',monospace;color:#6F8579;letter-spacing:.12em;margin-bottom:11px">YOUR LOCAL SHOP OR PLAY SPACE</div>
+            <input id="lgs" type="text" autocomplete="off" placeholder="e.g. Dragon's Den, Game Haven… (optional)" style="width:100%;height:50px;padding:0 16px;border-radius:13px;background:#0E1512;border:1px solid rgba(120,255,180,.16);color:#E6F2EA;font:500 14px 'JetBrains Mono',monospace;outline:none"/>
+          </div>
+          <div style="margin-top:22px">
+            <div style="font:600 12px 'JetBrains Mono',monospace;color:#6F8579;letter-spacing:.12em;margin-bottom:11px">HOW DO YOU TRADE TODAY?</div>
+            <div class="chips" data-group="trade" style="display:flex;flex-wrap:wrap;gap:9px">
+              <button type="button" class="chip" data-value="Local game shop">Local game shop</button>
+              <button type="button" class="chip" data-value="Facebook groups">Facebook groups</button>
+              <button type="button" class="chip" data-value="Discord">Discord</button>
+              <button type="button" class="chip" data-value="Online marketplaces">Online marketplaces</button>
+              <button type="button" class="chip" data-value="I don't trade yet">I don't trade yet</button>
+            </div>
+          </div>
+          <div style="margin-top:22px">
+            <div style="font:600 12px 'JetBrains Mono',monospace;color:#6F8579;letter-spacing:.12em;margin-bottom:11px">WHAT WOULD MAKE BINDAR A YES?</div>
+            <div class="chips" data-group="want" style="display:flex;flex-wrap:wrap;gap:9px">
+              <button type="button" class="chip" data-value="Trading locally">Trading locally</button>
+              <button type="button" class="chip" data-value="Skip the shipping">Skip the shipping</button>
+              <button type="button" class="chip" data-value="Cash offers welcome">Cash offers welcome</button>
+              <button type="button" class="chip" data-value="Finding rare cards">Finding rare cards</button>
+            </div>
+          </div>
+          <div style="margin-top:28px;display:flex;align-items:center;gap:14px">
+            <button id="submit-survey" type="button" style="height:50px;padding:0 26px;border:none;border-radius:14px;background:#35F58A;color:#04140C;font:700 15px 'Space Grotesk';cursor:pointer;box-shadow:0 0 24px rgba(53,245,138,.3)">Submit answers</button>
+            <button id="skip-survey" type="button" style="height:50px;padding:0 8px;border:none;background:transparent;color:#6F8579;font:600 14px 'Space Grotesk';cursor:pointer">Skip</button>
+          </div>
+        </div>
+
+    <!-- STATE: done -->
+        <div data-step="done" hidden>
+          <div style="display:inline-flex;align-items:center;gap:9px;margin-bottom:18px"><span style="width:34px;height:34px;border-radius:50%;background:rgba(53,245,138,.16);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#35F58A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span><span style="font:700 14px 'JetBrains Mono',monospace;color:#35F58A">TRADER #<span data-pos>—</span></span></div>
+          <h2 style="margin:0;font-weight:700;font-size:34px;letter-spacing:-.01em">You're on the radar.</h2>
+          <p style="margin:14px 0 0;font-size:16px;line-height:1.6;color:#9FB3A8;max-width:460px">We'll email when your area goes live. Bindar's better with your crew — invite local players to bump your area up the list.</p>
+          <div style="margin-top:26px;display:flex;flex-wrap:wrap;gap:10px;max-width:460px">
+            <div style="flex:1;min-width:220px;display:flex;align-items:center;gap:10px;height:52px;padding:0 8px 0 16px;border-radius:14px;background:#0E1512;border:1px solid rgba(120,255,180,.14)"><span id="invite-link" style="flex:1;font:500 14px 'JetBrains Mono',monospace;color:#9FB3A8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">bindar.app/i/…</span><button id="copy-invite" type="button" style="height:38px;padding:0 14px;border-radius:10px;border:none;background:rgba(53,245,138,.14);color:#35F58A;font:700 12px 'Space Grotesk';cursor:pointer">Copy</button></div>
+            <button id="share-invite" type="button" style="height:52px;padding:0 22px;border:none;border-radius:14px;background:#35F58A;color:#04140C;font:700 14px 'Space Grotesk';cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 0 24px rgba(53,245,138,.3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#04140C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M8 8l4-4 4 4M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/></svg>Share</button>
+          </div>
+        </div>
+  </div>
+</div>
+
+<script>
+/* Scroll-reveal — plain script, runs independently of the app.js module so the
+   page content is NEVER blocked by the backend/CDN import. */
+(function () {
+  var reveal = function (el) { el.style.opacity = '1'; el.style.transform = 'none'; }
+  function run() {
+    var els = document.querySelectorAll('[data-reveal]')
+    if (!('IntersectionObserver' in window)) { els.forEach(reveal); return }
+    var io = new IntersectionObserver(function (ents) {
+      ents.forEach(function (e) { if (e.isIntersecting) { reveal(e.target); io.unobserve(e.target) } })
+    }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' })
+    els.forEach(function (el) { io.observe(el) })
+    // Safety net: never leave content hidden.
+    setTimeout(function () {
+      els.forEach(function (el) { if (getComputedStyle(el).opacity === '0') reveal(el) })
+    }, 2500)
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run)
+  else run()
+})()
+</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
