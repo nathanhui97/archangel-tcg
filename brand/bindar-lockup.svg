@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="160" viewBox="0 0 660 160" fill="none">
+  <g transform="translate(22,30) scale(1.56)">
+    <circle cx="32" cy="32" r="24" stroke="#35F58A" stroke-width="2.5" opacity="0.32"></circle>
+    <circle cx="32" cy="32" r="13.5" stroke="#35F58A" stroke-width="2.5" opacity="0.6"></circle>
+    <circle cx="32" cy="32" r="3.4" fill="#35F58A"></circle>
+    <g transform="rotate(-14 45 15)"><rect x="38.5" y="6.5" width="13" height="17" rx="2.5" fill="#35F58A"></rect></g>
+  </g>
+  <text x="140" y="102" font-family="&#39;Space Grotesk&#39;,&#39;Helvetica Neue&#39;,Arial,sans-serif" font-weight="700" font-size="64" letter-spacing="1" fill="#E6F2EA">BINDAR</text>
+</svg>
