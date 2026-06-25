@@ -143,8 +143,8 @@ form.addEventListener('submit', async (e) => {
     })
     if (error) throw error
     const row = Array.isArray(data) ? data[0] : data
-    state.pos = row ? row.position : null
-    state.code = row ? row.referral_code : null
+    state.pos = row ? row.pos : null
+    state.code = row ? row.ref_code : null
     updateInvite()
     showStep('survey')
   } catch (err) {

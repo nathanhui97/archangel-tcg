@@ -63,7 +63,7 @@ create or replace function public.join_waitlist(
   p_city        text default null,
   p_referred_by text default null
 )
-returns table (position int, referral_code text)
+returns table (pos int, ref_code text)
 language plpgsql
 security definer
 set search_path = public
@@ -95,21 +95,22 @@ begin
     if v_city is not null then
       update public.waitlist set city = coalesce(city, v_city) where email = v_email;
     end if;
-    position := v_pos;
-    referral_code := v_code;
+    pos := v_pos;
+    ref_code := v_code;
     return next;
     return;
   end if;
 
   -- New signup: short unique referral code, position = seed + count.
-  v_code := lower(substr(encode(gen_random_bytes(6), 'hex'), 1, 8));
+  -- md5(random()) keeps this dependency-free (no pgcrypto needed).
+  v_code := substr(md5(random()::text || clock_timestamp()::text), 1, 8);
   v_pos  := v_seed + (select count(*) from public.waitlist) + 1;
 
   insert into public.waitlist (email, city, referred_by, referral_code, position)
   values (v_email, v_city, v_ref, v_code, v_pos);
 
-  position := v_pos;
-  referral_code := v_code;
+  pos := v_pos;
+  ref_code := v_code;
   return next;
 end;
 $$;
