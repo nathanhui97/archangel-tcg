@@ -2,6 +2,7 @@ import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import { View, ActivityIndicator } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import {
   useFonts,
   SpaceGrotesk_400Regular,
@@ -80,22 +81,24 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <AuthGate>
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: colors.bg },
-            headerTintColor: colors.ink,
-            contentStyle: { backgroundColor: colors.bg },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(app)" options={{ headerShown: false }} />
-        </Stack>
-      </AuthGate>
-      <StatusBar style="light" />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <AuthGate>
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: colors.bg },
+              headerTintColor: colors.ink,
+              contentStyle: { backgroundColor: colors.bg },
+              animation: 'slide_from_right',
+            }}
+          >
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(app)" options={{ headerShown: false }} />
+          </Stack>
+        </AuthGate>
+        <StatusBar style="light" />
+      </AuthProvider>
+    </GestureHandlerRootView>
   )
 }

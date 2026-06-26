@@ -1,26 +1,33 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import {
   View,
   Text,
   ScrollView,
   Pressable,
+  Image,
   ActivityIndicator,
   Alert,
   useWindowDimensions,
 } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useBinder, addCardsToBinder, removeBinderItem, updateBinder } from '@/lib/binders'
+import {
+  useBinder,
+  addCardsToBinder,
+  removeBinderItem,
+  updateBinder,
+  reorderBinderItems,
+  deleteBinder,
+} from '@/lib/binders'
 import { CardPicker } from '@/components/CardPicker'
+import { DraggableCardGrid } from '@/components/DraggableCardGrid'
+import { BinderMenuSheet } from '@/components/BinderMenuSheet'
 import { useAuth } from '@/lib/auth'
-import { MonoLabel } from '@/components/ui'
-import { CardTile, gridTileWidth } from '@/components/ui/CardTile'
+import { gridTileWidth } from '@/components/ui/CardTile'
 import { colors } from '@/lib/theme'
+import type { BinderItem } from '@/types'
 
-/** Group key for a binder item: the card's set name, falling back to the set code in its id (e.g. "GD01"). */
-function setLabel(item: { card?: { set_name?: string | null } | null; card_id: string }): string {
-  return item.card?.set_name || item.card_id.split('-')[0] || 'Other'
-}
+const CARD_RATIO = 5 / 7
 
 function HeaderButton({ label, onPress, icon }: { label: string; onPress: () => void; icon?: boolean }) {
   return (
@@ -34,33 +41,46 @@ function HeaderButton({ label, onPress, icon }: { label: string; onPress: () => 
   )
 }
 
+/** Image-only card tile with condition/foil + quantity badges (no captions, so 9 fit). */
+function CardFace({ item, width, height }: { item: BinderItem; width: number; height: number }) {
+  return (
+    <View
+      style={{ width, height }}
+      className="rounded-lg overflow-hidden bg-surface-raised border border-subtle"
+    >
+      {item.card?.image_url ? (
+        <Image source={{ uri: item.card.image_url }} resizeMode="cover" className="w-full h-full" />
+      ) : null}
+      <View className="absolute top-1 left-1 bg-bg/80 rounded px-1 py-0.5">
+        <Text className="text-muted-2 font-mono-bold text-[9px]">
+          {item.condition}{item.is_foil ? ' ✦' : ''}
+        </Text>
+      </View>
+      {item.quantity > 1 ? (
+        <View className="absolute top-1 right-1 bg-bg/80 rounded px-1">
+          <Text className="text-ink font-mono-bold text-[10px]">×{item.quantity}</Text>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
 export default function BinderDetailScreen() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { session } = useAuth()
   const { binder, items, loading, error, refresh } = useBinder(id)
   const [adding, setAdding] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const isOwner = !!binder && !!session && binder.user_id === session.user.id
 
   const { width } = useWindowDimensions()
   const tileW = gridTileWidth(width)
+  const tileH = tileW / CARD_RATIO
 
-  // Group cards by set so they're easy to find, sorted by set name.
-  const sections = useMemo(() => {
-    const map = new Map<string, typeof items>()
-    for (const it of items) {
-      const key = setLabel(it)
-      const arr = map.get(key)
-      if (arr) arr.push(it)
-      else map.set(key, [it])
-    }
-    return Array.from(map.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([title, data]) => ({ title, data }))
-  }, [items])
-
-  function confirmRemove(itemId: string, name: string) {
+  function confirmRemove(item: BinderItem) {
+    const name = item.card?.name ?? 'this card'
     Alert.alert(`Remove ${name}?`, undefined, [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -68,7 +88,7 @@ export default function BinderDetailScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await removeBinderItem(itemId)
+            await removeBinderItem(item.id)
             refresh()
           } catch (err) {
             Alert.alert('Error', (err as Error).message)
@@ -78,14 +98,49 @@ export default function BinderDetailScreen() {
     ])
   }
 
-  async function setPublic(value: boolean) {
-    if (!binder || binder.is_public === value) return
+  async function handleReorder(orderedIds: string[]) {
     try {
-      await updateBinder(binder.id, { is_public: value })
-      refresh()
+      await reorderBinderItems(orderedIds)
     } catch (err) {
       Alert.alert('Error', (err as Error).message)
+    } finally {
+      refresh()
     }
+  }
+
+  function confirmDeleteBinder() {
+    if (!binder) return
+    Alert.alert(
+      `Delete ${binder.name}?`,
+      'This removes the binder and every card inside it. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteBinder(binder.id)
+              router.back()
+            } catch (err) {
+              Alert.alert('Error', (err as Error).message)
+            }
+          },
+        },
+      ]
+    )
+  }
+
+  async function setPublic(value: boolean) {
+    if (!binder || binder.is_public === value) return
+    await updateBinder(binder.id, { is_public: value })
+    refresh()
+  }
+
+  async function rename(next: string) {
+    if (!binder) return
+    await updateBinder(binder.id, { name: next })
+    refresh()
   }
 
   if (loading) {
@@ -136,7 +191,20 @@ export default function BinderDetailScreen() {
         options={{
           headerShown: true,
           title: '',
-          headerRight: isOwner ? () => <HeaderButton label="Add" icon onPress={() => setAdding(true)} /> : undefined,
+          headerRight: isOwner
+            ? () => (
+                <View className="flex-row items-center gap-2">
+                  <HeaderButton label="Add" icon onPress={() => setAdding(true)} />
+                  <Pressable
+                    onPress={() => setMenuOpen(true)}
+                    hitSlop={8}
+                    className="w-8 h-8 items-center justify-center active:opacity-60"
+                  >
+                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.ink} />
+                  </Pressable>
+                </View>
+              )
+            : undefined,
         }}
       />
 
@@ -154,7 +222,9 @@ export default function BinderDetailScreen() {
                 return (
                   <Pressable
                     key={String(pub)}
-                    onPress={() => setPublic(pub)}
+                    onPress={() =>
+                      setPublic(pub).catch((err) => Alert.alert('Error', (err as Error).message))
+                    }
                     className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-[10px] ${active ? 'bg-primary/10' : ''}`}
                   >
                     {pub && active && <View className="w-1.5 h-1.5 rounded-full bg-primary" />}
@@ -182,47 +252,47 @@ export default function BinderDetailScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
-          {sections.map((section) => (
-            <View key={section.title} className="mb-5">
-              <View className="flex-row items-center justify-between mb-2.5">
-                <MonoLabel>{section.title}</MonoLabel>
-                <Text className="text-faint-2 text-[11px] font-mono">{section.data.length}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                {section.data.map((item) => (
-                  <CardTile
-                    key={item.id}
-                    width={tileW}
-                    uri={item.card?.image_url}
-                    onLongPress={isOwner ? () => confirmRemove(item.id, item.card?.name ?? 'this card') : undefined}
-                    topLeft={
-                      <View className="bg-bg/80 rounded px-1 py-0.5">
-                        <Text className="text-muted-2 font-mono-bold text-[9px]">{item.condition}{item.is_foil ? ' ✦' : ''}</Text>
-                      </View>
-                    }
-                    topRight={
-                      item.quantity > 1 ? (
-                        <View className="bg-bg/80 rounded px-1">
-                          <Text className="text-ink font-mono-bold text-[10px]">×{item.quantity}</Text>
-                        </View>
-                      ) : undefined
-                    }
-                    title={item.card_id}
-                    subtitle={item.card?.name}
-                  />
-                ))}
-              </View>
+          {isOwner ? (
+            <DraggableCardGrid
+              items={items}
+              tileWidth={tileW}
+              tileHeight={tileH}
+              onReorder={handleReorder}
+              onTapItem={(item) => confirmRemove(item)}
+              renderItem={(item) => <CardFace item={item} width={tileW} height={tileH} />}
+            />
+          ) : (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {items.map((item) => (
+                <Pressable
+                  key={item.id}
+                  onPress={() => router.push({ pathname: '/(app)/card/[id]', params: { id: item.card_id } })}
+                  className="active:opacity-80"
+                >
+                  <CardFace item={item} width={tileW} height={tileH} />
+                </Pressable>
+              ))}
             </View>
-          ))}
+          )}
 
           {isOwner && (
-            <View className="flex-row items-center justify-center gap-1.5 pt-1">
+            <View className="flex-row items-center justify-center gap-1.5 pt-4">
               <Ionicons name="information-circle-outline" size={13} color={colors.faint} />
-              <Text className="text-faint text-xs font-display">Long-press a card to remove</Text>
+              <Text className="text-faint text-xs font-display">Tap to remove · long-press to reorder</Text>
             </View>
           )}
         </ScrollView>
       )}
+
+      <BinderMenuSheet
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        name={binder.name}
+        isPublic={binder.is_public}
+        onRename={rename}
+        onSetPublic={setPublic}
+        onDelete={confirmDeleteBinder}
+      />
     </View>
   )
 }

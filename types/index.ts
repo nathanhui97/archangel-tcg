@@ -105,6 +105,7 @@ export interface BinderItem {
   quantity: number
   condition: Condition
   is_foil: boolean
+  position: number
   photo_url: string | null
   notes: string | null
   created_at: string

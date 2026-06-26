@@ -166,7 +166,8 @@ export function useBinder(binderId: string | undefined) {
         .from('binder_items')
         .select('*, card:cards(*)')
         .eq('binder_id', binderId)
-        .order('created_at', { ascending: false }),
+        .order('position', { ascending: true })
+        .order('created_at', { ascending: true }),
     ])
 
     if (binderRes.error) setError(binderRes.error.message)
@@ -225,12 +226,23 @@ export async function addCardToBinder(input: AddCardInput): Promise<void> {
     return
   }
 
+  // New cards go to the end of the binder's manual order.
+  const { data: last } = await supabase
+    .from('binder_items')
+    .select('position')
+    .eq('binder_id', binderId)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const nextPosition = (last?.position ?? -1) + 1
+
   const { error } = await supabase.from('binder_items').insert({
     binder_id: binderId,
     card_id: cardId,
     quantity,
     condition,
     is_foil: isFoil,
+    position: nextPosition,
   })
   if (error) throw new Error(error.message)
 }
@@ -265,4 +277,19 @@ export async function updateBinderItem(
 export async function removeBinderItem(itemId: string): Promise<void> {
   const { error } = await supabase.from('binder_items').delete().eq('id', itemId)
   if (error) throw new Error(error.message)
+}
+
+/**
+ * Persist a new manual order for a binder's items. `orderedIds` is the full list
+ * of binder_item ids in their new visual order; index becomes each row's position.
+ * RLS guards every write, so this only succeeds on the user's own binders.
+ */
+export async function reorderBinderItems(orderedIds: string[]): Promise<void> {
+  const results = await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase.from('binder_items').update({ position: index }).eq('id', id)
+    )
+  )
+  const failed = results.find((r) => r.error)
+  if (failed?.error) throw new Error(failed.error.message)
 }
