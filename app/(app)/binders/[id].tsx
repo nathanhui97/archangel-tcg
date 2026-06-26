@@ -177,8 +177,12 @@ export default function BinderDetailScreen() {
           title={`Add to ${binder.name}`}
           addNoun="binder"
           onAdd={async (cardIds) => {
-            await addCardsToBinder(binder.id, cardIds)
-            refresh()
+            try {
+              await addCardsToBinder(binder.id, cardIds)
+              refresh()
+            } catch (err) {
+              Alert.alert('Could not add cards', (err as Error).message)
+            }
           }}
         />
       </View>
