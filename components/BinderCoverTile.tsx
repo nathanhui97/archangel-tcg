@@ -3,7 +3,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { StatusDot } from '@/components/ui'
 import { colors } from '@/lib/theme'
 
-const CARD_RATIO = 5 / 7
+// Binders are chunkier than a single card — a touch taller than wide.
+const BINDER_RATIO = 1.18
 
 type Props = {
   width: number
@@ -15,21 +16,24 @@ type Props = {
   onLongPress?: () => void
 }
 
-/** A binder represented by its cover card (portrait), with name + count + status. */
+/** A binder drawn as a closed 3-ring binder: a spine with ring holes + cover art. */
 export function BinderCoverTile({ width, name, itemCount, isPublic, coverUrl, onPress, onLongPress }: Props) {
-  const height = width / CARD_RATIO
+  const height = width * BINDER_RATIO
   return (
     <Pressable onPress={onPress} onLongPress={onLongPress} style={{ width }} className="active:opacity-80">
-      <View style={{ width, height }} className="relative">
-        {/* Subtle stacked-card edge behind, so it reads as a binder, not a single card. */}
-        <View
-          className="absolute rounded-xl bg-surface-raised border border-subtle"
-          style={{ left: 6, right: 6, top: 6, bottom: -6 }}
-        />
-        <View
-          style={{ width, height }}
-          className="rounded-xl overflow-hidden bg-surface-raised border border-subtle"
-        >
+      <View
+        style={{ width, height }}
+        className="flex-row rounded-xl overflow-hidden border border-subtle bg-surface-raised"
+      >
+        {/* Ring spine */}
+        <View className="w-4 bg-surface border-r border-subtle items-center justify-around py-4">
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} className="w-[7px] h-[7px] rounded-full bg-bg border border-subtle" />
+          ))}
+        </View>
+
+        {/* Cover art fills the front */}
+        <View className="flex-1">
           {coverUrl ? (
             <Image source={{ uri: coverUrl }} resizeMode="cover" className="w-full h-full" />
           ) : (
@@ -37,10 +41,12 @@ export function BinderCoverTile({ width, name, itemCount, isPublic, coverUrl, on
               <Ionicons name="albums-outline" size={26} color={colors.faint2} />
             </View>
           )}
+          {/* faint sheen down the binder cover */}
+          <View className="absolute top-0 left-0 bottom-0 w-1/3 bg-ink/5" />
         </View>
       </View>
 
-      <Text className="text-ink font-display-semibold text-sm mt-3" numberOfLines={1}>{name}</Text>
+      <Text className="text-ink font-display-semibold text-sm mt-2.5" numberOfLines={1}>{name}</Text>
       <View className="flex-row items-center justify-between mt-0.5">
         <Text className="text-muted text-xs font-display">{itemCount} card{itemCount !== 1 ? 's' : ''}</Text>
         <StatusDot on={isPublic} label={isPublic ? 'Public' : 'Private'} />
@@ -49,17 +55,24 @@ export function BinderCoverTile({ width, name, itemCount, isPublic, coverUrl, on
   )
 }
 
-/** Dashed "create" tile that matches the cover-tile footprint (portrait). */
+/** Dashed "create" tile matching the binder footprint, with a hint of a spine. */
 export function NewBinderTile({ width, label, onPress }: { width: number; label: string; onPress?: () => void }) {
-  const height = width / CARD_RATIO
+  const height = width * BINDER_RATIO
   return (
     <Pressable onPress={onPress} style={{ width }} className="active:opacity-70">
       <View
         style={{ height }}
-        className="rounded-xl border border-dashed border-subtle items-center justify-center"
+        className="flex-row rounded-xl border border-dashed border-subtle overflow-hidden"
       >
-        <Ionicons name="add" size={28} color={colors.primary} />
-        <Text className="text-primary text-xs font-display-medium mt-1">{label}</Text>
+        <View className="w-4 border-r border-dashed border-subtle items-center justify-around py-4">
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} className="w-[7px] h-[7px] rounded-full border border-subtle" />
+          ))}
+        </View>
+        <View className="flex-1 items-center justify-center">
+          <Ionicons name="add" size={28} color={colors.primary} />
+          <Text className="text-primary text-xs font-display-medium mt-1">{label}</Text>
+        </View>
       </View>
     </Pressable>
   )
