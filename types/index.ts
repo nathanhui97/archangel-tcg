@@ -143,8 +143,9 @@ export interface Message {
   trade_id: string
   sender_id: string
   body: string
-  kind: 'text' | 'proposal'
+  kind: 'text' | 'proposal' | 'inquiry'
   proposal_id: string | null
+  card_id: string | null
   created_at: string
 }
 

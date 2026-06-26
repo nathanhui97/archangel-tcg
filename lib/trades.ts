@@ -134,19 +134,32 @@ export async function inquireAboutCard(
   let tradeId: string
   if (open) {
     tradeId = open.id
-    // Surface the freshly-requested card on the existing thread.
-    await supabase.from('trades').update({ about_card_id: cardId }).eq('id', tradeId)
   } else {
     const { data, error } = await supabase
       .from('trades')
-      .insert({ recipient_id: ownerId, about_card_id: cardId })
+      .insert({ recipient_id: ownerId })
       .select('id')
       .single()
     if (error) throw new Error(error.message)
     tradeId = data.id as string
   }
 
-  await supabase.from('messages').insert({ trade_id: tradeId, body: `Interested in your ${cardLabel} — open to a trade?` })
+  // Cap: you can request the same card from the same person at most 3 times.
+  const { count } = await supabase
+    .from('messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('trade_id', tradeId)
+    .eq('sender_id', myId)
+    .eq('card_id', cardId)
+    .eq('kind', 'inquiry')
+  if ((count ?? 0) >= 3) {
+    throw new Error(`You've already requested ${cardLabel} 3 times in this conversation.`)
+  }
+
+  const { error: mErr } = await supabase
+    .from('messages')
+    .insert({ trade_id: tradeId, kind: 'inquiry', card_id: cardId, body: `Interested in ${cardLabel}` })
+  if (mErr) throw new Error(mErr.message)
   return tradeId
 }
 
@@ -296,7 +309,7 @@ export function useTrade(tradeId: string | undefined) {
   const [proposalsById, setProposalsById] = useState<Record<string, ProposalView>>({})
   const [otherHandle, setOtherHandle] = useState('')
   const [otherId, setOtherId] = useState<string | null>(null)
-  const [aboutCard, setAboutCard] = useState<{ id: string; image_url: string | null; name: string | null } | null>(null)
+  const [cardsById, setCardsById] = useState<Record<string, { id: string; image_url: string | null; name: string | null }>>({})
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -312,12 +325,6 @@ export function useTrade(tradeId: string | undefined) {
     const { data: p } = await supabase.from('profiles').select('handle').eq('id', other).maybeSingle()
     setOtherHandle(p?.handle ?? '?')
 
-    if (t.about_card_id) {
-      const { data: c } = await supabase.from('cards').select('id, image_url, name').eq('id', t.about_card_id).maybeSingle()
-      setAboutCard((c as any) ?? null)
-    } else {
-      setAboutCard(null)
-    }
     const { data: msgs } = await supabase
       .from('messages')
       .select('*')
@@ -325,6 +332,17 @@ export function useTrade(tradeId: string | undefined) {
       .order('created_at', { ascending: true })
     const messageList = (msgs ?? []) as Message[]
     setMessages(messageList)
+
+    // Resolve cards referenced by inquiry messages (rendered as card bubbles).
+    const inquiryCardIds = [
+      ...new Set(messageList.filter((m) => m.kind === 'inquiry' && m.card_id).map((m) => m.card_id as string)),
+    ]
+    if (inquiryCardIds.length > 0) {
+      const { data: cs } = await supabase.from('cards').select('id, image_url, name').in('id', inquiryCardIds)
+      setCardsById(Object.fromEntries((cs ?? []).map((c: any) => [c.id, c])))
+    } else {
+      setCardsById({})
+    }
 
     // Resolve any proposals referenced by proposal-kind messages.
     const propIds = messageList.filter((m) => m.kind === 'proposal' && m.proposal_id).map((m) => m.proposal_id as string)
@@ -375,5 +393,5 @@ export function useTrade(tradeId: string | undefined) {
   }, [tradeId, load])
 
   const iAmRequester = !!trade && trade.requester_id === uid
-  return { trade, messages, proposalsById, otherHandle, otherId, aboutCard, iAmRequester, loading, refresh: load }
+  return { trade, messages, proposalsById, cardsById, otherHandle, otherId, iAmRequester, loading, refresh: load }
 }
