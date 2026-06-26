@@ -131,6 +131,7 @@ export interface Trade {
   requester_id: string
   recipient_id: string
   status: TradeStatus
+  about_card_id: string | null
   requester_read_at: string
   recipient_read_at: string | null
   created_at: string

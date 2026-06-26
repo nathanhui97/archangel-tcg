@@ -1,10 +1,11 @@
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useCard } from '@/lib/cards'
 import { useMyProfile } from '@/lib/profile'
 import { useNearbyCards } from '@/lib/nearby'
 import { useMyWantlist, addToWantlist, removeFromWantlist } from '@/lib/wantlist'
+import { inquireAboutCard } from '@/lib/trades'
 import type { NearbyCard } from '@/types'
 import { CardThumb, Avatar, MonoLabel } from '@/components/ui'
 import { colors } from '@/lib/theme'
@@ -34,6 +35,19 @@ export default function CardDetailScreen() {
       await addToWantlist(id)
     }
     await refresh()
+  }
+
+  async function requestFrom(h: NearbyCard) {
+    if (!profile?.id) {
+      Alert.alert('Set your profile first', 'You need a profile to send a request.')
+      return
+    }
+    try {
+      const tradeId = await inquireAboutCard(profile.id, h.owner_id, id, card?.id ?? id)
+      router.push({ pathname: '/(app)/chat/[id]', params: { id: tradeId } })
+    } catch (err) {
+      Alert.alert('Error', (err as Error).message)
+    }
   }
 
   return (
@@ -97,27 +111,34 @@ export default function CardDetailScreen() {
             ) : (
               <View className="gap-2">
                 {holders.map((h) => (
-                  <Pressable
+                  <View
                     key={h.binder_item_id}
-                    onPress={() => router.push({ pathname: '/(app)/trader/[handle]', params: { handle: h.owner_handle } })}
-                    className="flex-row items-center bg-surface border border-subtle rounded-2xl px-3.5 py-3 active:opacity-70"
+                    className="flex-row items-center bg-surface border border-subtle rounded-2xl px-3.5 py-3"
                   >
-                    <Avatar handle={h.owner_handle} size={38} />
-                    <View className="flex-1 ml-3">
-                      <Text className="text-ink font-mono text-sm">@{h.owner_handle}</Text>
-                      <Text className="text-muted text-xs mt-0.5 font-display">
-                        {h.condition}
-                        {h.quantity > 1 ? ` · ×${h.quantity}` : ''}
-                        {h.is_foil ? ' · ' : ''}
-                        {h.is_foil ? <Text className="text-gold font-display-medium">Foil</Text> : ''}
-                        {'  ·  '}{distanceLabel(h)}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center gap-1 bg-primary/10 border border-primary rounded-lg px-3 py-1.5">
-                      <Ionicons name="swap-horizontal" size={14} color={colors.primary} />
-                      <Text className="text-primary text-xs font-display-semibold">View</Text>
-                    </View>
-                  </Pressable>
+                    <Pressable
+                      onPress={() => router.push({ pathname: '/(app)/trader/[handle]', params: { handle: h.owner_handle } })}
+                      className="flex-row items-center flex-1 active:opacity-70"
+                    >
+                      <Avatar handle={h.owner_handle} size={38} />
+                      <View className="flex-1 ml-3">
+                        <Text className="text-ink font-mono text-sm">@{h.owner_handle}</Text>
+                        <Text className="text-muted text-xs mt-0.5 font-display">
+                          {h.condition}
+                          {h.quantity > 1 ? ` · ×${h.quantity}` : ''}
+                          {h.is_foil ? ' · ' : ''}
+                          {h.is_foil ? <Text className="text-gold font-display-medium">Foil</Text> : ''}
+                          {'  ·  '}{distanceLabel(h)}
+                        </Text>
+                      </View>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => requestFrom(h)}
+                      className="flex-row items-center gap-1 bg-primary rounded-lg px-3 py-2 ml-2 active:opacity-80"
+                    >
+                      <Ionicons name="paper-plane-outline" size={13} color={colors.primaryInk} />
+                      <Text className="text-primary-ink text-xs font-display-semibold">Request</Text>
+                    </Pressable>
+                  </View>
                 ))}
               </View>
             )}

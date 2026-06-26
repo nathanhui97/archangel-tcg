@@ -115,6 +115,33 @@ export async function proposeTrade(myId: string, recipientId: string): Promise<s
   return data.id as string
 }
 
+/**
+ * Start (or reuse) a conversation that's about a specific card. If it's new, sets
+ * the card context and auto-posts an inquiry message. Returns the trade id.
+ */
+export async function inquireAboutCard(
+  myId: string,
+  ownerId: string,
+  cardId: string,
+  cardLabel: string
+): Promise<string> {
+  const { data: existing } = await supabase
+    .from('trades')
+    .select('id, status')
+    .or(`and(requester_id.eq.${myId},recipient_id.eq.${ownerId}),and(requester_id.eq.${ownerId},recipient_id.eq.${myId})`)
+  const open = (existing ?? []).find((t: any) => t.status !== 'declined' && t.status !== 'cancelled')
+  if (open) return open.id
+
+  const { data, error } = await supabase
+    .from('trades')
+    .insert({ recipient_id: ownerId, about_card_id: cardId })
+    .select('id')
+    .single()
+  if (error) throw new Error(error.message)
+  await supabase.from('messages').insert({ trade_id: data.id, body: `Interested in your ${cardLabel} — open to a trade?` })
+  return data.id as string
+}
+
 export async function respondToTrade(tradeId: string, status: TradeStatus): Promise<void> {
   const { error } = await supabase.from('trades').update({ status }).eq('id', tradeId)
   if (error) throw new Error(error.message)
@@ -261,6 +288,7 @@ export function useTrade(tradeId: string | undefined) {
   const [proposalsById, setProposalsById] = useState<Record<string, ProposalView>>({})
   const [otherHandle, setOtherHandle] = useState('')
   const [otherId, setOtherId] = useState<string | null>(null)
+  const [aboutCard, setAboutCard] = useState<{ id: string; image_url: string | null; name: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -275,6 +303,13 @@ export function useTrade(tradeId: string | undefined) {
     setOtherId(other)
     const { data: p } = await supabase.from('profiles').select('handle').eq('id', other).maybeSingle()
     setOtherHandle(p?.handle ?? '?')
+
+    if (t.about_card_id) {
+      const { data: c } = await supabase.from('cards').select('id, image_url, name').eq('id', t.about_card_id).maybeSingle()
+      setAboutCard((c as any) ?? null)
+    } else {
+      setAboutCard(null)
+    }
     const { data: msgs } = await supabase
       .from('messages')
       .select('*')
@@ -332,5 +367,5 @@ export function useTrade(tradeId: string | undefined) {
   }, [tradeId, load])
 
   const iAmRequester = !!trade && trade.requester_id === uid
-  return { trade, messages, proposalsById, otherHandle, otherId, iAmRequester, loading, refresh: load }
+  return { trade, messages, proposalsById, otherHandle, otherId, aboutCard, iAmRequester, loading, refresh: load }
 }

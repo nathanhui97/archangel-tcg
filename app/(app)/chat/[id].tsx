@@ -137,7 +137,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets()
   const { session } = useAuth()
   const uid = session?.user.id
-  const { trade, messages, proposalsById, otherHandle, otherId, iAmRequester, loading, refresh } = useTrade(id)
+  const { trade, messages, proposalsById, otherHandle, otherId, aboutCard, iAmRequester, loading, refresh } = useTrade(id)
 
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -240,6 +240,32 @@ export default function ChatScreen() {
         </View>
       ) : (
         <>
+          {aboutCard && (
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/propose',
+                  params: { tradeId: id, recipientId: otherId ?? '', recipientHandle: otherHandle, getCardId: aboutCard.id },
+                })
+              }
+              className="flex-row items-center mx-4 mt-3 bg-surface border border-subtle rounded-2xl px-3 py-2.5 active:opacity-80"
+            >
+              <View style={{ width: 30, height: 42 }} className="rounded overflow-hidden bg-surface-raised border border-subtle">
+                {aboutCard.image_url ? <Image source={{ uri: aboutCard.image_url }} resizeMode="cover" className="w-full h-full" /> : null}
+              </View>
+              <View className="flex-1 ml-3">
+                <Text className="text-ink font-mono-bold text-xs">{aboutCard.id}</Text>
+                <Text className="text-muted text-[11px] font-display" numberOfLines={1}>{aboutCard.name ?? 'Inquiry'}</Text>
+              </View>
+              {!closed && (
+                <View className="flex-row items-center gap-1">
+                  <Text className="text-primary text-xs font-display-semibold">Make an offer</Text>
+                  <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+                </View>
+              )}
+            </Pressable>
+          )}
+
           {reversed.length === 0 ? (
             <View className="flex-1 items-center justify-center px-10">
               <Text className="text-muted text-sm text-center font-display">

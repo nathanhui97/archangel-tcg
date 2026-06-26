@@ -66,10 +66,11 @@ export default function ProposeScreen() {
   const insets = useSafeAreaInsets()
   const { session } = useAuth()
   const myId = session?.user.id ?? null
-  const { recipientId, recipientHandle, getItemId, tradeId } = useLocalSearchParams<{
+  const { recipientId, recipientHandle, getItemId, getCardId, tradeId } = useLocalSearchParams<{
     recipientId: string
     recipientHandle?: string
     getItemId?: string
+    getCardId?: string
     tradeId?: string
   }>()
 
@@ -86,11 +87,15 @@ export default function ProposeScreen() {
 
   // Prefill the "you get" side with the card the user came from.
   useEffect(() => {
-    if (prefilled || !getItemId || theirCards.length === 0) return
-    const match = theirCards.find((c) => c.id === getItemId)
+    if (prefilled || theirCards.length === 0) return
+    const match = getItemId
+      ? theirCards.find((c) => c.id === getItemId)
+      : getCardId
+        ? theirCards.find((c) => c.card_id === getCardId)
+        : undefined
     if (match) setGet([match])
     setPrefilled(true)
-  }, [getItemId, theirCards, prefilled])
+  }, [getItemId, getCardId, theirCards, prefilled])
 
   const giveIds = useMemo(() => new Set(give.map((c) => c.id)), [give])
   const getIds = useMemo(() => new Set(get.map((c) => c.id)), [get])
