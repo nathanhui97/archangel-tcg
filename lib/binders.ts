@@ -7,7 +7,7 @@ import type { Binder, BinderItem, BinderType, Card, Condition } from '@/types'
 // Binders list (the current user's binders)
 // ─────────────────────────────────────────────────────────────────────────
 
-type BinderWithCount = Binder & { item_count: number; cover_urls: string[] }
+type BinderWithCount = Binder & { item_count: number; cover_url: string | null }
 
 export function useMyBinders() {
   const { session } = useAuth()
@@ -34,22 +34,31 @@ export function useMyBinders() {
 
     const counts = await Promise.all(
       (rows ?? []).map(async (b) => {
-        const [{ count }, coverRes] = await Promise.all([
+        const [{ count }, firstRes] = await Promise.all([
           supabase
             .from('binder_items')
             .select('id', { count: 'exact', head: true })
             .eq('binder_id', b.id),
+          // Fallback cover = first card in the binder's order.
           supabase
             .from('binder_items')
             .select('card:cards(image_url)')
             .eq('binder_id', b.id)
-            .order('created_at', { ascending: false })
-            .limit(4),
+            .order('position', { ascending: true })
+            .order('created_at', { ascending: true })
+            .limit(1),
         ])
-        const cover_urls = (coverRes.data ?? [])
-          .map((r: any) => r.card?.image_url as string | null)
-          .filter((u): u is string => !!u)
-        return { ...(b as Binder), item_count: count ?? 0, cover_urls }
+        let cover_url = (firstRes.data?.[0] as any)?.card?.image_url ?? null
+        // A chosen cover card overrides the fallback (it may not be the first card).
+        if (b.cover_card_id) {
+          const { data: cc } = await supabase
+            .from('cards')
+            .select('image_url')
+            .eq('id', b.cover_card_id)
+            .maybeSingle()
+          if (cc?.image_url) cover_url = cc.image_url
+        }
+        return { ...(b as Binder), item_count: count ?? 0, cover_url }
       })
     )
 

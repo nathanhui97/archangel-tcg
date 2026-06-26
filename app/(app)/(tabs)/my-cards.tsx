@@ -125,7 +125,7 @@ export default function MyCardsScreen() {
                 name={b.name}
                 itemCount={b.item_count}
                 isPublic={b.is_public}
-                coverUrls={b.cover_urls}
+                coverUrl={b.cover_url}
                 onPress={() => router.push(`/(app)/binders/${b.id}`)}
               />
             ))}
