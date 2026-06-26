@@ -85,13 +85,23 @@ export default function BinderDetailScreen() {
     if (items.length === 0 && editing) setEditing(false)
   }, [items.length, editing])
 
-  async function handleDeleteItem(item: BinderItem) {
-    try {
-      await removeBinderItem(item.id)
-      refresh()
-    } catch (err) {
-      Alert.alert('Error', (err as Error).message)
-    }
+  function handleDeleteItem(item: BinderItem) {
+    const name = item.card?.name ?? 'this card'
+    Alert.alert(`Remove ${name}?`, undefined, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await removeBinderItem(item.id)
+            refresh()
+          } catch (err) {
+            Alert.alert('Error', (err as Error).message)
+          }
+        },
+      },
+    ])
   }
 
   async function handleReorder(orderedIds: string[]) {

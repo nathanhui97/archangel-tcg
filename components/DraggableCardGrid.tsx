@@ -82,10 +82,10 @@ function MovableTile({
   useEffect(() => {
     if (editing) {
       const dir = indexFallback % 2 === 0 ? 1 : -1
-      const amp = 1.4
+      const amp = 0.7
       wiggle.value = dir * amp
       wiggle.value = withRepeat(
-        withTiming(-dir * amp, { duration: 130 + (indexFallback % 4) * 18 }),
+        withTiming(-dir * amp, { duration: 170 + (indexFallback % 4) * 16 }),
         -1,
         true
       )
