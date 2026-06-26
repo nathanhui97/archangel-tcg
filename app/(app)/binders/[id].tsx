@@ -22,6 +22,7 @@ import {
 import { CardPicker } from '@/components/CardPicker'
 import { DraggableCardGrid } from '@/components/DraggableCardGrid'
 import { BinderMenuSheet } from '@/components/BinderMenuSheet'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useAuth } from '@/lib/auth'
 import { gridTileWidth } from '@/components/ui/CardTile'
 import { colors } from '@/lib/theme'
@@ -73,6 +74,9 @@ export default function BinderDetailScreen() {
   const [adding, setAdding] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [confirm, setConfirm] = useState<
+    { title: string; message?: string; confirmLabel: string; onConfirm: () => void } | null
+  >(null)
 
   const isOwner = !!binder && !!session && binder.user_id === session.user.id
 
@@ -87,21 +91,18 @@ export default function BinderDetailScreen() {
 
   function handleDeleteItem(item: BinderItem) {
     const name = item.card?.name ?? 'this card'
-    Alert.alert(`Remove ${name}?`, undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await removeBinderItem(item.id)
-            refresh()
-          } catch (err) {
-            Alert.alert('Error', (err as Error).message)
-          }
-        },
+    setConfirm({
+      title: `Remove ${name}?`,
+      confirmLabel: 'Remove',
+      onConfirm: async () => {
+        try {
+          await removeBinderItem(item.id)
+          refresh()
+        } catch (err) {
+          Alert.alert('Error', (err as Error).message)
+        }
       },
-    ])
+    })
   }
 
   async function handleReorder(orderedIds: string[]) {
@@ -116,25 +117,19 @@ export default function BinderDetailScreen() {
 
   function confirmDeleteBinder() {
     if (!binder) return
-    Alert.alert(
-      `Delete ${binder.name}?`,
-      'This removes the binder and every card inside it. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteBinder(binder.id)
-              router.back()
-            } catch (err) {
-              Alert.alert('Error', (err as Error).message)
-            }
-          },
-        },
-      ]
-    )
+    setConfirm({
+      title: `Delete ${binder.name}?`,
+      message: 'This removes the binder and every card inside it. This cannot be undone.',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        try {
+          await deleteBinder(binder.id)
+          router.back()
+        } catch (err) {
+          Alert.alert('Error', (err as Error).message)
+        }
+      },
+    })
   }
 
   async function setPublic(value: boolean) {
@@ -311,6 +306,19 @@ export default function BinderDetailScreen() {
         onRename={rename}
         onSetPublic={setPublic}
         onDelete={confirmDeleteBinder}
+      />
+
+      <ConfirmDialog
+        visible={!!confirm}
+        title={confirm?.title ?? ''}
+        message={confirm?.message}
+        confirmLabel={confirm?.confirmLabel ?? 'Confirm'}
+        destructive
+        onConfirm={() => {
+          confirm?.onConfirm()
+          setConfirm(null)
+        }}
+        onCancel={() => setConfirm(null)}
       />
     </View>
   )
