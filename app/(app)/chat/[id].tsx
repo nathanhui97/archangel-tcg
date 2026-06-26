@@ -131,23 +131,24 @@ export default function ChatScreen() {
             </View>
           )}
 
-          <FlatList
-            data={reversed}
-            inverted
-            keyExtractor={(m) => m.id}
-            contentContainerStyle={{ paddingVertical: 12 }}
-            keyboardDismissMode="interactive"
-            renderItem={({ item }) => <Bubble message={item} mine={item.sender_id === uid} />}
-            ListEmptyComponent={
-              <View className="items-center pt-10 px-8" style={{ transform: [{ scaleY: -1 }] }}>
-                <Text className="text-muted text-sm text-center font-display">
-                  {isRecipientPending
-                    ? 'No messages yet.'
-                    : 'Send a message to introduce the trade — what you’d like and what you’re offering.'}
-                </Text>
-              </View>
-            }
-          />
+          {reversed.length === 0 ? (
+            <View className="flex-1 items-center justify-center px-10">
+              <Text className="text-muted text-sm text-center font-display">
+                {isRecipientPending
+                  ? 'No messages yet.'
+                  : 'Send a message to introduce the trade — what you’d like and what you’re offering.'}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={reversed}
+              inverted
+              keyExtractor={(m) => m.id}
+              contentContainerStyle={{ paddingVertical: 12 }}
+              keyboardDismissMode="interactive"
+              renderItem={({ item }) => <Bubble message={item} mine={item.sender_id === uid} />}
+            />
+          )}
 
           {/* Composer */}
           {status === 'declined' || status === 'cancelled' ? (
