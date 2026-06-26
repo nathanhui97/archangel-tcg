@@ -10,8 +10,11 @@ import {
 } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { supabase } from '@/lib/supabase'
+import { MonoLabel, Cursor } from '@/components/ui'
+import { colors } from '@/lib/theme'
 
 const RESEND_COOLDOWN_SECONDS = 60
+const CELLS = [0, 1, 2, 3, 4, 5]
 
 export default function VerifyScreen() {
   const router = useRouter()
@@ -25,14 +28,11 @@ export default function VerifyScreen() {
   const inputRef = useRef<TextInput>(null)
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setCooldown((c) => (c > 0 ? c - 1 : 0))
-    }, 1000)
+    const t = setInterval(() => setCooldown((c) => (c > 0 ? c - 1 : 0)), 1000)
     return () => clearInterval(t)
   }, [])
 
   useEffect(() => {
-    // Autofocus the code input on mount
     const t = setTimeout(() => inputRef.current?.focus(), 250)
     return () => clearTimeout(t)
   }, [])
@@ -46,25 +46,20 @@ export default function VerifyScreen() {
     setError(null)
     setVerifying(true)
 
-    const { error: sbError } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
-    })
+    const { error: sbError } = await supabase.auth.verifyOtp({ email, token, type: 'signup' })
 
     setVerifying(false)
-
     if (sbError) {
       setError(sbError.message)
       return
     }
-    // Auth listener in root layout will pick up the session and route us forward.
+    // Auth listener in root layout will pick up the session and route forward.
   }
 
   async function handleResend() {
     if (cooldown > 0 || !email) return
     setError(null)
-    const { error: sbError } = await supabase.auth.signInWithOtp({ email })
+    const { error: sbError } = await supabase.auth.resend({ type: 'signup', email })
     if (sbError) {
       setError(sbError.message)
       return
@@ -76,78 +71,85 @@ export default function VerifyScreen() {
     const digits = text.replace(/\D/g, '').slice(0, 6)
     setCode(digits)
     if (error) setError(null)
-    if (digits.length === 6) {
-      handleVerify(digits)
-    }
+    if (digits.length === 6) handleVerify(digits)
   }
+
+  const mm = Math.floor(cooldown / 60)
+  const ss = String(cooldown % 60).padStart(2, '0')
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-gray-950"
+      className="flex-1 bg-bg"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View className="flex-1 px-6 pt-12">
-        <Text className="text-3xl font-bold text-white">Check your email</Text>
-        <Text className="text-gray-400 mt-2">
-          We sent a 6-digit code to{'\n'}
-          <Text className="text-gray-200 font-medium">{email}</Text>
+      <View className="flex-1 px-6 pt-10">
+        <MonoLabel className="text-primary">CONFIRM</MonoLabel>
+        <Text className="text-[28px] font-display-semibold text-ink mt-3">Confirm your email</Text>
+        <Text className="text-muted mt-2 font-display">
+          Enter the 6-digit code sent to{'\n'}
+          <Text className="text-primary font-mono">{email}</Text>
         </Text>
 
-        <View className="mt-10">
+        {/* Code cells (single hidden input drives them) */}
+        <Pressable onPress={() => inputRef.current?.focus()} className="mt-10">
+          <View className="flex-row justify-between">
+            {CELLS.map((i) => {
+              const char = code[i]
+              const isActive = i === code.length
+              return (
+                <View
+                  key={i}
+                  className={`w-[46px] h-[62px] rounded-xl bg-surface border items-center justify-center ${
+                    isActive ? 'border-primary' : char ? 'border-subtle' : 'border-subtle'
+                  }`}
+                  style={isActive ? { shadowColor: colors.primary, shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } } : undefined}
+                >
+                  {char ? (
+                    <Text
+                      className="text-ink text-[28px] font-mono-medium"
+                      style={{ textShadowColor: colors.primary, textShadowRadius: 12, textShadowOffset: { width: 0, height: 0 } }}
+                    >
+                      {char}
+                    </Text>
+                  ) : isActive ? (
+                    <Cursor height={28} />
+                  ) : null}
+                </View>
+              )
+            })}
+          </View>
+
           <TextInput
             ref={inputRef}
             value={code}
             onChangeText={onChangeCode}
-            placeholder="000000"
-            placeholderTextColor="#334155"
             keyboardType="number-pad"
             inputMode="numeric"
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
             maxLength={6}
             editable={!verifying}
-            className="bg-gray-900 text-white text-center tracking-[12px] text-3xl font-semibold px-4 py-5 rounded-xl border border-gray-800"
+            className="absolute opacity-0 w-full h-[62px]"
           />
-          {error && (
-            <Text className="text-red-400 text-sm mt-3 text-center">{error}</Text>
-          )}
-        </View>
-
-        <Pressable
-          onPress={() => handleVerify()}
-          disabled={verifying || code.length !== 6}
-          className={`mt-6 py-4 rounded-2xl items-center ${
-            verifying || code.length !== 6
-              ? 'bg-gray-800'
-              : 'bg-indigo-600 active:opacity-80'
-          }`}
-        >
-          {verifying ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text className="text-white font-semibold text-base">Verify</Text>
-          )}
         </Pressable>
 
-        <View className="mt-6 items-center">
+        {error && <Text className="text-danger text-sm mt-4 text-center font-display">{error}</Text>}
+
+        <View className="mt-8 flex-row items-center justify-center gap-2">
+          {verifying && <ActivityIndicator size="small" color={colors.primary} />}
           {cooldown > 0 ? (
-            <Text className="text-gray-500 text-sm">
-              Resend code in {cooldown}s
+            <Text className="text-muted text-sm font-display">
+              Resend code in <Text className="font-mono text-dim">{mm}:{ss}</Text>
             </Text>
           ) : (
             <Pressable onPress={handleResend} className="active:opacity-60">
-              <Text className="text-indigo-400 text-sm font-medium">
-                Resend code
-              </Text>
+              <Text className="text-primary text-sm font-display-medium">Resend code</Text>
             </Pressable>
           )}
         </View>
 
-        <Pressable
-          onPress={() => router.back()}
-          className="mt-4 items-center active:opacity-60"
-        >
-          <Text className="text-gray-500 text-sm">Use a different email</Text>
+        <Pressable onPress={() => router.back()} className="mt-4 items-center active:opacity-60">
+          <Text className="text-primary text-sm font-display-medium">Use a different email</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>

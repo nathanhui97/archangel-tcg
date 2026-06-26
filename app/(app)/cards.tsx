@@ -6,15 +6,8 @@ export default function BrowseCardsScreen() {
   const router = useRouter()
 
   return (
-    <View className="flex-1 bg-gray-950">
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: 'Browse Cards',
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#ffffff',
-        }}
-      />
+    <View className="flex-1 bg-bg">
+      <Stack.Screen options={{ headerShown: true, title: 'Browse Cards' }} />
 
       <View className="pt-4">
         <CardSearch

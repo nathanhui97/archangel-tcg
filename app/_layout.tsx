@@ -2,7 +2,20 @@ import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import { View, ActivityIndicator } from 'react-native'
+import {
+  useFonts,
+  SpaceGrotesk_400Regular,
+  SpaceGrotesk_500Medium,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from '@expo-google-fonts/space-grotesk'
+import {
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_700Bold,
+} from '@expo-google-fonts/jetbrains-mono'
 import { AuthProvider, useAuth } from '@/lib/auth'
+import { colors } from '@/lib/theme'
 import '../global.css'
 
 function AuthGate({ children }: { children: React.ReactNode }) {
@@ -38,8 +51,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-gray-950 items-center justify-center">
-        <ActivityIndicator size="large" color="#6366f1" />
+      <View className="flex-1 bg-bg items-center justify-center">
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     )
   }
@@ -48,14 +61,32 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_500Medium,
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
+    JetBrainsMono_400Regular,
+    JetBrainsMono_500Medium,
+    JetBrainsMono_700Bold,
+  })
+
+  if (!fontsLoaded) {
+    return (
+      <View className="flex-1 bg-bg items-center justify-center">
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    )
+  }
+
   return (
     <AuthProvider>
       <AuthGate>
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: '#0f172a' },
-            headerTintColor: '#ffffff',
-            contentStyle: { backgroundColor: '#0f172a' },
+            headerStyle: { backgroundColor: colors.bg },
+            headerTintColor: colors.ink,
+            contentStyle: { backgroundColor: colors.bg },
             animation: 'slide_from_right',
           }}
         >

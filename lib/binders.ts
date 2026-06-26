@@ -7,7 +7,7 @@ import type { Binder, BinderItem, BinderType, Card, Condition } from '@/types'
 // Binders list (the current user's binders)
 // ─────────────────────────────────────────────────────────────────────────
 
-type BinderWithCount = Binder & { item_count: number }
+type BinderWithCount = Binder & { item_count: number; cover_urls: string[] }
 
 export function useMyBinders() {
   const { session } = useAuth()
@@ -34,11 +34,22 @@ export function useMyBinders() {
 
     const counts = await Promise.all(
       (rows ?? []).map(async (b) => {
-        const { count } = await supabase
-          .from('binder_items')
-          .select('id', { count: 'exact', head: true })
-          .eq('binder_id', b.id)
-        return { ...(b as Binder), item_count: count ?? 0 }
+        const [{ count }, coverRes] = await Promise.all([
+          supabase
+            .from('binder_items')
+            .select('id', { count: 'exact', head: true })
+            .eq('binder_id', b.id),
+          supabase
+            .from('binder_items')
+            .select('card:cards(image_url)')
+            .eq('binder_id', b.id)
+            .order('created_at', { ascending: false })
+            .limit(4),
+        ])
+        const cover_urls = (coverRes.data ?? [])
+          .map((r: any) => r.card?.image_url as string | null)
+          .filter((u): u is string => !!u)
+        return { ...(b as Binder), item_count: count ?? 0, cover_urls }
       })
     )
 
@@ -51,6 +62,54 @@ export function useMyBinders() {
   }, [load])
 
   return { binders, loading, error, refresh: load }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// "For trade" — every card across the user's PUBLIC binders (what's on the radar)
+// ─────────────────────────────────────────────────────────────────────────
+
+export type TradeCard = {
+  id: string
+  card_id: string
+  image_url: string | null
+  name: string | null
+  quantity: number
+  condition: string
+  is_foil: boolean
+}
+
+export function useMyPublicCards() {
+  const { session } = useAuth()
+  const [cards, setCards] = useState<TradeCard[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    if (!session) return
+    setLoading(true)
+    const { data } = await supabase
+      .from('binder_items')
+      .select('id, card_id, quantity, condition, is_foil, created_at, card:cards(image_url, name), binder:binders!inner(is_public, user_id)')
+      .eq('binder.user_id', session.user.id)
+      .eq('binder.is_public', true)
+      .order('created_at', { ascending: false })
+    const mapped: TradeCard[] = (data ?? []).map((r: any) => ({
+      id: r.id,
+      card_id: r.card_id,
+      quantity: r.quantity,
+      condition: r.condition,
+      is_foil: r.is_foil,
+      image_url: r.card?.image_url ?? null,
+      name: r.card?.name ?? null,
+    }))
+    setCards(mapped)
+    setLoading(false)
+  }, [session])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { cards, loading, refresh: load }
 }
 
 export async function createBinder(
@@ -174,6 +233,25 @@ export async function addCardToBinder(input: AddCardInput): Promise<void> {
     is_foil: isFoil,
   })
   if (error) throw new Error(error.message)
+}
+
+/**
+ * Add several cards to a binder in one go (multi-select picker).
+ * Defaults to Near Mint, non-foil, qty 1 — users refine condition/qty later.
+ */
+export async function addCardsToBinder(
+  binderId: string,
+  cardIds: string[],
+  opts: { condition?: Condition; isFoil?: boolean; quantity?: number } = {}
+): Promise<void> {
+  const condition = opts.condition ?? 'NM'
+  const isFoil = opts.isFoil ?? false
+  const quantity = opts.quantity ?? 1
+  // Sequential: each add reads-then-writes to bump duplicates, so we avoid
+  // racing two writes against the same card row.
+  for (const cardId of cardIds) {
+    await addCardToBinder({ binderId, cardId, quantity, condition, isFoil })
+  }
 }
 
 export async function updateBinderItem(

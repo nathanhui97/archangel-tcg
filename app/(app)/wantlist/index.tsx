@@ -1,17 +1,38 @@
+import { useCallback } from 'react'
 import {
   View,
   Text,
   FlatList,
   Pressable,
-  Image,
   ActivityIndicator,
   Alert,
 } from 'react-native'
-import { Stack, Link } from 'expo-router'
+import { Stack, Link, useFocusEffect } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { useMyWantlist, removeFromWantlist } from '@/lib/wantlist'
+import { CardThumb } from '@/components/ui'
+import { colors } from '@/lib/theme'
+
+function AddPill() {
+  return (
+    <Link href="/(app)/wantlist/add" asChild>
+      <Pressable className="flex-row items-center gap-1 bg-primary/10 border border-primary rounded-lg px-3 py-1.5 active:opacity-70">
+        <Ionicons name="add" size={15} color={colors.primary} />
+        <Text className="text-primary font-display-semibold text-sm">Add</Text>
+      </Pressable>
+    </Link>
+  )
+}
 
 export default function WantlistScreen() {
   const { items, loading, error, refresh } = useMyWantlist()
+
+  // Refetch when this screen regains focus (e.g. after adding cards on the picker).
+  useFocusEffect(
+    useCallback(() => {
+      refresh()
+    }, [refresh])
+  )
 
   function confirmRemove(itemId: string, name: string) {
     Alert.alert(`Remove ${name}?`, undefined, [
@@ -32,63 +53,45 @@ export default function WantlistScreen() {
   }
 
   return (
-    <View className="flex-1 bg-gray-950">
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: 'My Wantlist',
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#ffffff',
-          headerRight: () => (
-            <Link href="/(app)/wantlist/add" asChild>
-              <Pressable className="px-3 py-1.5 active:opacity-60">
-                <Text className="text-indigo-400 font-semibold">+ Add</Text>
-              </Pressable>
-            </Link>
-          ),
-        }}
-      />
+    <View className="flex-1 bg-bg">
+      <Stack.Screen options={{ headerShown: true, title: 'Wantlist', headerRight: () => <AddPill /> }} />
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#6366f1" />
+          <ActivityIndicator color={colors.primary} />
         </View>
       ) : error ? (
         <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-red-400 text-sm">{error}</Text>
+          <Text className="text-danger text-sm font-display">{error}</Text>
         </View>
       ) : (
         <FlatList
           data={items}
           keyExtractor={(it) => it.id}
-          contentContainerStyle={{ padding: 16 }}
-          ItemSeparatorComponent={() => <View className="h-2" />}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8 }}
+          ItemSeparatorComponent={() => <View className="h-px bg-hair my-2.5" />}
           ListEmptyComponent={
             <View className="items-center py-16 px-6">
-              <Text className="text-white font-semibold text-lg">Wantlist is empty</Text>
-              <Text className="text-gray-400 text-sm mt-2 text-center">
-                Add cards you&apos;re hunting for. Players nearby with those cards in their
-                public binders will show up as matches.
+              <Text className="text-ink font-display-semibold text-lg">Wantlist is empty</Text>
+              <Text className="text-muted text-sm mt-2 text-center font-display">
+                Add cards you&apos;re hunting for. Players nearby with those cards in their public binders show up as matches.
               </Text>
               <Link href="/(app)/wantlist/add" asChild>
-                <Pressable className="mt-6 bg-indigo-600 px-6 py-3 rounded-2xl active:opacity-80">
-                  <Text className="text-white font-semibold">Add cards</Text>
+                <Pressable
+                  className="mt-6 bg-primary px-6 py-3 rounded-2xl active:opacity-90"
+                  style={{ shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 22, shadowOffset: { width: 0, height: 0 } }}
+                >
+                  <Text className="text-primary-ink font-display-bold">Add cards</Text>
                 </Pressable>
               </Link>
             </View>
           }
-          ListHeaderComponent={
-            items.length > 0 ? (
-              <Text className="text-gray-500 text-xs mb-3">
-                {items.length} card{items.length === 1 ? '' : 's'} on your wantlist
-              </Text>
-            ) : null
-          }
           ListFooterComponent={
             items.length > 0 ? (
-              <Text className="text-gray-600 text-xs text-center mt-6">
-                Long-press a card to remove
-              </Text>
+              <View className="flex-row items-center justify-center gap-1.5 mt-6">
+                <Ionicons name="information-circle-outline" size={13} color={colors.faint} />
+                <Text className="text-faint text-xs font-display">Long-press a card to remove</Text>
+              </View>
             ) : null
           }
           renderItem={({ item }) => {
@@ -96,26 +99,13 @@ export default function WantlistScreen() {
             return (
               <Pressable
                 onLongPress={() => confirmRemove(item.id, card?.name ?? 'this card')}
-                className="bg-gray-900 border border-gray-800 rounded-xl p-3 flex-row items-center"
+                className="flex-row items-center active:opacity-70"
               >
-                {card?.image_url ? (
-                  <Image
-                    source={{ uri: card.image_url }}
-                    className="w-12 h-16 rounded-md bg-gray-800"
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View className="w-12 h-16 rounded-md bg-gray-800" />
-                )}
+                <CardThumb uri={card?.image_url} className="w-12 h-[67px]" radius="rounded-lg" />
                 <View className="flex-1 ml-3">
-                  <Text numberOfLines={1} className="text-white font-semibold text-base">
-                    {card?.name ?? 'Unknown card'}
-                  </Text>
-                  <Text className="text-gray-500 text-xs font-mono mt-0.5">{item.card_id}</Text>
+                  <Text className="text-ink font-mono-bold text-[15px]">{item.card_id}</Text>
                   {card?.set_name && (
-                    <Text numberOfLines={1} className="text-gray-500 text-xs mt-0.5">
-                      {card.set_name}
-                    </Text>
+                    <Text numberOfLines={1} className="text-muted text-xs mt-1 font-display">{card.set_name}</Text>
                   )}
                 </View>
               </Pressable>

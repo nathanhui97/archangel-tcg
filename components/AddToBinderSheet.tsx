@@ -4,27 +4,28 @@ import {
   Text,
   Modal,
   Pressable,
-  Image,
   Switch,
-  ActivityIndicator,
 } from 'react-native'
 import type { Card, Condition } from '@/types'
+import { Button, MonoLabel, CardThumb } from '@/components/ui'
+import { colors } from '@/lib/theme'
 
-const CONDITIONS: { value: Condition; label: string; subtitle: string }[] = [
-  { value: 'NM',  label: 'NM',  subtitle: 'Near Mint' },
-  { value: 'LP',  label: 'LP',  subtitle: 'Lightly Played' },
-  { value: 'MP',  label: 'MP',  subtitle: 'Moderately Played' },
-  { value: 'HP',  label: 'HP',  subtitle: 'Heavily Played' },
-  { value: 'DMG', label: 'DMG', subtitle: 'Damaged' },
+const CONDITIONS: { value: Condition; label: string }[] = [
+  { value: 'NM', label: 'NM' },
+  { value: 'LP', label: 'LP' },
+  { value: 'MP', label: 'MP' },
+  { value: 'HP', label: 'HP' },
+  { value: 'DMG', label: 'DMG' },
 ]
 
 type Props = {
   card: Card | null
+  binderName?: string
   onCancel: () => void
   onConfirm: (input: { quantity: number; condition: Condition; isFoil: boolean }) => Promise<void>
 }
 
-export function AddToBinderSheet({ card, onCancel, onConfirm }: Props) {
+export function AddToBinderSheet({ card, binderName, onCancel, onConfirm }: Props) {
   const [quantity, setQuantity] = useState(1)
   const [condition, setCondition] = useState<Condition>('NM')
   const [isFoil, setIsFoil] = useState(false)
@@ -37,7 +38,6 @@ export function AddToBinderSheet({ card, onCancel, onConfirm }: Props) {
     setError(null)
     try {
       await onConfirm({ quantity, condition, isFoil })
-      // Reset for next add
       setQuantity(1)
       setCondition('NM')
       setIsFoil(false)
@@ -49,67 +49,48 @@ export function AddToBinderSheet({ card, onCancel, onConfirm }: Props) {
   }
 
   return (
-    <Modal
-      visible={!!card}
-      transparent
-      animationType="slide"
-      onRequestClose={onCancel}
-    >
-      <Pressable onPress={onCancel} className="flex-1 bg-black/60 justify-end">
+    <Modal visible={!!card} transparent animationType="slide" onRequestClose={onCancel}>
+      <Pressable onPress={onCancel} className="flex-1 justify-end" style={{ backgroundColor: 'rgba(2,4,3,0.55)' }}>
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className="bg-gray-950 rounded-t-3xl border-t border-gray-800 p-6 pb-10"
+          className="bg-surface-sheet rounded-t-[26px] border-t border-primary-soft px-6 pt-3 pb-10"
         >
+          {/* grab handle */}
+          <View className="self-center w-9 h-1 rounded-full bg-track mb-5" />
+
           {card && (
             <>
-              <View className="flex-row items-center mb-5">
-                {card.image_url ? (
-                  <Image
-                    source={{ uri: card.image_url }}
-                    className="w-16 h-22 rounded-lg bg-gray-900"
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View className="w-16 h-22 rounded-lg bg-gray-900" />
-                )}
+              <View className="flex-row items-center mb-6">
+                <CardThumb uri={card.image_url} className="w-[54px] h-[74px]" radius="rounded-lg" />
                 <View className="flex-1 ml-3">
-                  <Text className="text-white font-bold text-base" numberOfLines={2}>
-                    {card.name}
-                  </Text>
-                  <Text className="text-gray-500 text-xs font-mono mt-1">{card.id}</Text>
-                  {card.set_name && (
-                    <Text className="text-gray-500 text-xs mt-0.5" numberOfLines={1}>
-                      {card.set_name}
-                    </Text>
+                  <Text className="text-ink font-mono-bold text-[17px]" numberOfLines={1}>{card.id}</Text>
+                  {binderName && (
+                    <Text className="text-muted text-xs mt-1 font-display" numberOfLines={1}>→ {binderName}</Text>
                   )}
                 </View>
               </View>
 
-              {/* Quantity stepper */}
-              <View className="flex-row items-center justify-between mb-5">
-                <Text className="text-gray-300 font-medium">Quantity</Text>
-                <View className="flex-row items-center">
-                  <Pressable
-                    onPress={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="bg-gray-800 w-10 h-10 rounded-xl items-center justify-center active:opacity-60"
-                  >
-                    <Text className="text-white text-xl font-bold">−</Text>
-                  </Pressable>
-                  <Text className="text-white text-xl font-bold w-12 text-center">
-                    {quantity}
-                  </Text>
-                  <Pressable
-                    onPress={() => setQuantity(Math.min(999, quantity + 1))}
-                    className="bg-gray-800 w-10 h-10 rounded-xl items-center justify-center active:opacity-60"
-                  >
-                    <Text className="text-white text-xl font-bold">+</Text>
-                  </Pressable>
-                </View>
+              {/* Quantity */}
+              <MonoLabel className="mb-2">QUANTITY</MonoLabel>
+              <View className="flex-row items-center gap-4 mb-6">
+                <Pressable
+                  onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-[42px] h-[42px] rounded-xl bg-surface-control border border-subtle items-center justify-center active:opacity-60"
+                >
+                  <Text className="text-ink text-xl font-mono-medium">−</Text>
+                </Pressable>
+                <Text className="text-ink text-[22px] font-mono-bold w-10 text-center">{quantity}</Text>
+                <Pressable
+                  onPress={() => setQuantity(Math.min(999, quantity + 1))}
+                  className="w-[42px] h-[42px] rounded-xl bg-surface-control border border-subtle items-center justify-center active:opacity-60"
+                >
+                  <Text className="text-primary text-xl font-mono-medium">+</Text>
+                </Pressable>
               </View>
 
-              {/* Condition picker */}
-              <Text className="text-gray-300 font-medium mb-2">Condition</Text>
-              <View className="flex-row gap-1.5 mb-5">
+              {/* Condition */}
+              <MonoLabel className="mb-2">CONDITION</MonoLabel>
+              <View className="flex-row gap-1.5 mb-6">
                 {CONDITIONS.map((c) => {
                   const selected = condition === c.value
                   return (
@@ -117,16 +98,10 @@ export function AddToBinderSheet({ card, onCancel, onConfirm }: Props) {
                       key={c.value}
                       onPress={() => setCondition(c.value)}
                       className={`flex-1 py-2.5 rounded-lg border items-center active:opacity-80 ${
-                        selected
-                          ? 'bg-indigo-600 border-indigo-500'
-                          : 'bg-gray-900 border-gray-800'
+                        selected ? 'bg-primary/10 border-primary' : 'bg-surface border-subtle'
                       }`}
                     >
-                      <Text
-                        className={`font-bold text-sm ${
-                          selected ? 'text-white' : 'text-gray-400'
-                        }`}
-                      >
+                      <Text className={`font-mono-bold text-sm ${selected ? 'text-primary' : 'text-muted-2'}`}>
                         {c.label}
                       </Text>
                     </Pressable>
@@ -134,46 +109,24 @@ export function AddToBinderSheet({ card, onCancel, onConfirm }: Props) {
                 })}
               </View>
 
-              {/* Foil toggle */}
-              <View className="flex-row items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 mb-5">
-                <View className="flex-1 pr-3">
-                  <Text className="text-white font-medium">Foil / Parallel</Text>
-                  <Text className="text-gray-500 text-xs mt-0.5">
-                    Mark if this is a foil or alternate-art print of the card.
-                  </Text>
+              {/* Foil */}
+              <View className="flex-row items-center justify-between bg-surface border border-subtle rounded-xl px-4 py-3 mb-6">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-gold text-base">✦</Text>
+                  <Text className="text-ink font-display-medium">Foil</Text>
                 </View>
                 <Switch
                   value={isFoil}
                   onValueChange={setIsFoil}
-                  trackColor={{ false: '#1e293b', true: '#4f46e5' }}
-                  thumbColor="#ffffff"
+                  trackColor={{ false: colors.track, true: colors.primary }}
+                  thumbColor={isFoil ? colors.primaryInk : colors.muted2}
+                  ios_backgroundColor={colors.track}
                 />
               </View>
 
-              {error && (
-                <Text className="text-red-400 text-sm text-center mb-3">{error}</Text>
-              )}
+              {error && <Text className="text-danger text-sm text-center mb-3 font-display">{error}</Text>}
 
-              <View className="flex-row gap-2">
-                <Pressable
-                  onPress={onCancel}
-                  disabled={saving}
-                  className="flex-1 py-3.5 rounded-xl bg-gray-800 items-center active:opacity-70"
-                >
-                  <Text className="text-gray-300 font-semibold">Cancel</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleConfirm}
-                  disabled={saving}
-                  className="flex-[2] py-3.5 rounded-xl bg-indigo-600 items-center active:opacity-80"
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#ffffff" />
-                  ) : (
-                    <Text className="text-white font-semibold">Add to binder</Text>
-                  )}
-                </Pressable>
-              </View>
+              <Button title="Add to binder" onPress={handleConfirm} loading={saving} />
             </>
           )}
         </Pressable>

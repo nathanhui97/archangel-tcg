@@ -1,20 +1,38 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   View,
   Text,
-  FlatList,
+  ScrollView,
   Pressable,
-  Image,
   ActivityIndicator,
   Alert,
-  Switch,
+  useWindowDimensions,
 } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { useBinder, addCardToBinder, removeBinderItem, updateBinder } from '@/lib/binders'
-import { CardSearch } from '@/components/CardSearch'
-import { AddToBinderSheet } from '@/components/AddToBinderSheet'
+import { Ionicons } from '@expo/vector-icons'
+import { useBinder, addCardsToBinder, removeBinderItem, updateBinder } from '@/lib/binders'
+import { CardPicker } from '@/components/CardPicker'
 import { useAuth } from '@/lib/auth'
-import type { Card } from '@/types'
+import { MonoLabel } from '@/components/ui'
+import { CardTile, gridTileWidth } from '@/components/ui/CardTile'
+import { colors } from '@/lib/theme'
+
+/** Group key for a binder item: the card's set name, falling back to the set code in its id (e.g. "GD01"). */
+function setLabel(item: { card?: { set_name?: string | null } | null; card_id: string }): string {
+  return item.card?.set_name || item.card_id.split('-')[0] || 'Other'
+}
+
+function HeaderButton({ label, onPress, icon }: { label: string; onPress: () => void; icon?: boolean }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-1 bg-primary/10 border border-primary rounded-lg px-3 py-1.5 active:opacity-70"
+    >
+      {icon && <Ionicons name="add" size={15} color={colors.primary} />}
+      <Text className="text-primary font-display-semibold text-sm">{label}</Text>
+    </Pressable>
+  )
+}
 
 export default function BinderDetailScreen() {
   const router = useRouter()
@@ -22,22 +40,25 @@ export default function BinderDetailScreen() {
   const { session } = useAuth()
   const { binder, items, loading, error, refresh } = useBinder(id)
   const [adding, setAdding] = useState(false)
-  const [pendingCard, setPendingCard] = useState<Card | null>(null)
 
   const isOwner = !!binder && !!session && binder.user_id === session.user.id
 
-  async function handleConfirmAdd(input: { quantity: number; condition: 'NM' | 'LP' | 'MP' | 'HP' | 'DMG'; isFoil: boolean }) {
-    if (!pendingCard || !binder) return
-    await addCardToBinder({
-      binderId: binder.id,
-      cardId: pendingCard.id,
-      quantity: input.quantity,
-      condition: input.condition,
-      isFoil: input.isFoil,
-    })
-    setPendingCard(null)
-    refresh()
-  }
+  const { width } = useWindowDimensions()
+  const tileW = gridTileWidth(width)
+
+  // Group cards by set so they're easy to find, sorted by set name.
+  const sections = useMemo(() => {
+    const map = new Map<string, typeof items>()
+    for (const it of items) {
+      const key = setLabel(it)
+      const arr = map.get(key)
+      if (arr) arr.push(it)
+      else map.set(key, [it])
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([title, data]) => ({ title, data }))
+  }, [items])
 
   function confirmRemove(itemId: string, name: string) {
     Alert.alert(`Remove ${name}?`, undefined, [
@@ -57,8 +78,8 @@ export default function BinderDetailScreen() {
     ])
   }
 
-  async function togglePublic(value: boolean) {
-    if (!binder) return
+  async function setPublic(value: boolean) {
+    if (!binder || binder.is_public === value) return
     try {
       await updateBinder(binder.id, { is_public: value })
       refresh()
@@ -69,160 +90,139 @@ export default function BinderDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-gray-950 items-center justify-center">
-        <ActivityIndicator color="#6366f1" />
+      <View className="flex-1 bg-bg items-center justify-center">
+        <ActivityIndicator color={colors.primary} />
       </View>
     )
   }
 
   if (error || !binder) {
     return (
-      <View className="flex-1 bg-gray-950 items-center justify-center px-6">
-        <Text className="text-red-400 text-sm">{error ?? 'Binder not found.'}</Text>
-        <Pressable
-          onPress={() => router.back()}
-          className="mt-4 active:opacity-60"
-        >
-          <Text className="text-indigo-400">← Back</Text>
+      <View className="flex-1 bg-bg items-center justify-center px-6">
+        <Text className="text-danger text-sm font-display">{error ?? 'Binder not found.'}</Text>
+        <Pressable onPress={() => router.back()} className="mt-4 active:opacity-60">
+          <Text className="text-primary font-display-medium">← Back</Text>
         </Pressable>
       </View>
     )
   }
 
-  // "Add cards" mode: show the search component instead of the binder
+  // "Add cards" mode — full-catalog multi-select picker
   if (adding) {
     return (
-      <View className="flex-1 bg-gray-950">
+      <View className="flex-1 bg-bg">
         <Stack.Screen
           options={{
             headerShown: true,
-            title: 'Add to ' + binder.name,
-            headerStyle: { backgroundColor: '#0f172a' },
-            headerTintColor: '#ffffff',
-            headerRight: () => (
-              <Pressable
-                onPress={() => setAdding(false)}
-                className="px-3 py-1.5 active:opacity-60"
-              >
-                <Text className="text-indigo-400 font-semibold">Done</Text>
-              </Pressable>
-            ),
+            title: '',
+            headerRight: () => <HeaderButton label="Done" onPress={() => setAdding(false)} />,
           }}
         />
-        <View className="pt-3 flex-1">
-          <CardSearch onSelect={(card) => setPendingCard(card)} />
-        </View>
-        <AddToBinderSheet
-          card={pendingCard}
-          onCancel={() => setPendingCard(null)}
-          onConfirm={handleConfirmAdd}
+        <CardPicker
+          title={`Add to ${binder.name}`}
+          addNoun="binder"
+          onAdd={async (cardIds) => {
+            await addCardsToBinder(binder.id, cardIds)
+            refresh()
+          }}
         />
       </View>
     )
   }
 
   return (
-    <View className="flex-1 bg-gray-950">
+    <View className="flex-1 bg-bg">
       <Stack.Screen
         options={{
           headerShown: true,
-          title: binder.name,
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#ffffff',
-          headerRight: isOwner
-            ? () => (
-                <Pressable
-                  onPress={() => setAdding(true)}
-                  className="px-3 py-1.5 active:opacity-60"
-                >
-                  <Text className="text-indigo-400 font-semibold">+ Add</Text>
-                </Pressable>
-              )
-            : undefined,
+          title: '',
+          headerRight: isOwner ? () => <HeaderButton label="Add" icon onPress={() => setAdding(true)} /> : undefined,
         }}
       />
 
-      {isOwner && (
-        <View className="mx-4 mt-4 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 flex-row items-center justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-white font-medium">Public</Text>
-            <Text className="text-gray-500 text-xs mt-0.5">
-              {binder.is_public
-                ? 'Others can see this binder and match against your cards.'
-                : 'Only you can see this binder.'}
+      <View className="px-5 pt-1 pb-3">
+        <Text className="text-ink text-[22px] font-display-bold" numberOfLines={1}>{binder.name}</Text>
+        <View className="flex-row items-center justify-between mt-3">
+          <Text className="text-muted text-sm font-display">
+            {items.length} card{items.length !== 1 ? 's' : ''}
+          </Text>
+
+          {isOwner ? (
+            <View className="flex-row bg-surface border border-subtle rounded-xl p-0.5">
+              {([true, false] as const).map((pub) => {
+                const active = binder.is_public === pub
+                return (
+                  <Pressable
+                    key={String(pub)}
+                    onPress={() => setPublic(pub)}
+                    className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-[10px] ${active ? 'bg-primary/10' : ''}`}
+                  >
+                    {pub && active && <View className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                    <Text className={`text-xs font-display-medium ${active ? 'text-primary' : 'text-muted-2'}`}>
+                      {pub ? 'Public' : 'Private'}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          ) : (
+            <Text className={`text-xs font-display-medium ${binder.is_public ? 'text-primary' : 'text-faint-2'}`}>
+              {binder.is_public ? 'Public' : 'Private'}
             </Text>
-          </View>
-          <Switch
-            value={binder.is_public}
-            onValueChange={togglePublic}
-            trackColor={{ false: '#1e293b', true: '#4f46e5' }}
-            thumbColor="#ffffff"
-          />
+          )}
         </View>
-      )}
+      </View>
 
-      <FlatList
-        data={items}
-        keyExtractor={(it) => it.id}
-        contentContainerStyle={{ padding: 16, paddingTop: 12 }}
-        ItemSeparatorComponent={() => <View className="h-2" />}
-        ListEmptyComponent={
-          <View className="items-center py-16 px-6">
-            <Text className="text-white font-semibold text-lg">No cards yet</Text>
-            <Text className="text-gray-400 text-sm mt-2 text-center">
-              {isOwner
-                ? 'Tap "+ Add" to search and add your first card.'
-                : 'This binder is empty.'}
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const card = item.card
-          return (
-            <Pressable
-              onLongPress={isOwner ? () => confirmRemove(item.id, card?.name ?? 'this card') : undefined}
-              className="bg-gray-900 border border-gray-800 rounded-xl p-3 flex-row items-center"
-            >
-              {card?.image_url ? (
-                <Image
-                  source={{ uri: card.image_url }}
-                  className="w-12 h-16 rounded-md bg-gray-800"
-                  resizeMode="cover"
-                />
-              ) : (
-                <View className="w-12 h-16 rounded-md bg-gray-800" />
-              )}
-              <View className="flex-1 ml-3">
-                <Text numberOfLines={1} className="text-white font-semibold text-base">
-                  {card?.name ?? 'Unknown card'}
-                </Text>
-                <Text className="text-gray-500 text-xs font-mono mt-0.5">{item.card_id}</Text>
-                <View className="flex-row mt-1.5 gap-1.5">
-                  <Tag>{`×${item.quantity}`}</Tag>
-                  <Tag>{item.condition}</Tag>
-                  {item.is_foil && <Tag>Foil</Tag>}
-                </View>
+      {items.length === 0 ? (
+        <View className="items-center py-16 px-6">
+          <Text className="text-ink font-display-semibold text-lg">No cards yet</Text>
+          <Text className="text-muted text-sm mt-2 text-center font-display">
+            {isOwner ? 'Tap "Add" to search and add your first card.' : 'This binder is empty.'}
+          </Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
+          {sections.map((section) => (
+            <View key={section.title} className="mb-5">
+              <View className="flex-row items-center justify-between mb-2.5">
+                <MonoLabel>{section.title}</MonoLabel>
+                <Text className="text-faint-2 text-[11px] font-mono">{section.data.length}</Text>
               </View>
-            </Pressable>
-          )
-        }}
-      />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                {section.data.map((item) => (
+                  <CardTile
+                    key={item.id}
+                    width={tileW}
+                    uri={item.card?.image_url}
+                    onLongPress={isOwner ? () => confirmRemove(item.id, item.card?.name ?? 'this card') : undefined}
+                    topLeft={
+                      <View className="bg-bg/80 rounded px-1 py-0.5">
+                        <Text className="text-muted-2 font-mono-bold text-[9px]">{item.condition}{item.is_foil ? ' ✦' : ''}</Text>
+                      </View>
+                    }
+                    topRight={
+                      item.quantity > 1 ? (
+                        <View className="bg-bg/80 rounded px-1">
+                          <Text className="text-ink font-mono-bold text-[10px]">×{item.quantity}</Text>
+                        </View>
+                      ) : undefined
+                    }
+                    title={item.card_id}
+                    subtitle={item.card?.name}
+                  />
+                ))}
+              </View>
+            </View>
+          ))}
 
-      {isOwner && items.length > 0 && (
-        <Text className="text-gray-600 text-xs text-center pb-6">
-          Long-press a card to remove
-        </Text>
+          {isOwner && (
+            <View className="flex-row items-center justify-center gap-1.5 pt-1">
+              <Ionicons name="information-circle-outline" size={13} color={colors.faint} />
+              <Text className="text-faint text-xs font-display">Long-press a card to remove</Text>
+            </View>
+          )}
+        </ScrollView>
       )}
-    </View>
-  )
-}
-
-function Tag({ children }: { children: string }) {
-  return (
-    <View className="bg-gray-800 px-2 py-0.5 rounded">
-      <Text className="text-gray-300 text-[10px] font-medium uppercase tracking-wider">
-        {children}
-      </Text>
     </View>
   )
 }

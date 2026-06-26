@@ -1,25 +1,32 @@
-import { View, Text, Pressable } from 'react-native'
-import { Link } from 'expo-router'
+import { View, Text } from 'react-native'
+import { useRouter } from 'expo-router'
+import { RadarLogo } from '@/components/ui/RadarLogo'
+import { Button } from '@/components/ui'
+import { colors } from '@/lib/theme'
 
 export default function LandingScreen() {
+  const router = useRouter()
   return (
-    <View className="flex-1 bg-gray-950 items-center justify-center px-6">
-      <View className="items-center mb-14">
-        <Text className="text-5xl font-bold text-white tracking-tight">Bindar</Text>
-        <Text className="text-gray-400 text-lg mt-3">A radar for binders near you</Text>
-        <Text className="text-gray-500 text-sm mt-1">Gundam · One Piece</Text>
+    <View className="flex-1 bg-bg items-center justify-center px-7">
+      {/* radial green glow + radar */}
+      <View className="items-center">
+        <RadarLogo size={184} animated />
+        <Text
+          className="text-5xl font-display-bold text-ink mt-12 tracking-tight"
+          style={{ textShadowColor: colors.primary, textShadowRadius: 22, textShadowOffset: { width: 0, height: 0 } }}
+        >
+          BINDAR
+        </Text>
+        <Text className="text-muted text-base mt-3 font-display">A radar for binders near you</Text>
       </View>
 
-      <View className="w-full max-w-xs">
-        <Link href="/(auth)/login" asChild>
-          <Pressable className="bg-indigo-600 py-4 rounded-2xl items-center active:opacity-80">
-            <Text className="text-white font-semibold text-base">Get Started</Text>
-          </Pressable>
-        </Link>
-        <Text className="text-gray-500 text-xs text-center mt-4">
-          We&apos;ll email you a 6-digit code to sign in. No password needed.
-        </Text>
+      <View className="w-full max-w-xs mt-16">
+        <Button title="Get Started" onPress={() => router.push('/(auth)/login')} trailing={<Text className="text-primary-ink font-mono-bold text-base">→</Text>} />
       </View>
+
+      <Text className="absolute bottom-12 font-mono-medium text-[11px] tracking-[0.14em] text-faint">
+        GUNDAM CARD GAME · LOCAL TRADES
+      </Text>
     </View>
   )
 }

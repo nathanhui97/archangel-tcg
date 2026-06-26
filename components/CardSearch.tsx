@@ -6,10 +6,12 @@ import {
   Pressable,
   FlatList,
   ActivityIndicator,
-  Image,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { useCardSearch } from '@/lib/cards'
 import type { Card } from '@/types'
+import { CardThumb } from '@/components/ui'
+import { colors } from '@/lib/theme'
 
 type Props = {
   /** Called when the user taps a card row. */
@@ -21,6 +23,8 @@ type Props = {
   /** Filter to a specific set code (e.g. "GD01"). */
   setCode?: string | null
   placeholder?: string
+  /** Card ids already added — shown with a check instead of an add affordance. */
+  addedIds?: Set<string>
 }
 
 export function CardSearch({
@@ -29,92 +33,84 @@ export function CardSearch({
   limit = 30,
   setCode = null,
   placeholder = 'Search by card name or code',
+  addedIds,
 }: Props) {
   const [query, setQuery] = useState(initialQuery)
   const { results, loading, error } = useCardSearch(query, { limit, setCode })
 
   return (
     <View className="flex-1">
-      <View className="px-4 pb-3">
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder={placeholder}
-          placeholderTextColor="#475569"
-          autoCapitalize="none"
-          autoCorrect={false}
-          className="bg-gray-900 text-white px-4 py-3 rounded-xl border border-gray-800 text-base"
-        />
+      <View className="px-5 pb-3">
+        <View className="flex-row items-center bg-surface rounded-xl px-3.5 border border-subtle">
+          <Ionicons name="search" size={16} color={colors.primary} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder={placeholder}
+            placeholderTextColor={colors.faint2}
+            autoCapitalize="none"
+            autoCorrect={false}
+            className="flex-1 text-ink py-3 ml-2 text-base font-display"
+          />
+        </View>
         <View className="h-5 mt-1">
           {loading && (
             <View className="flex-row items-center">
-              <ActivityIndicator size="small" color="#475569" />
-              <Text className="text-gray-500 text-xs ml-2">Searching…</Text>
+              <ActivityIndicator size="small" color={colors.faint2} />
+              <Text className="text-faint text-xs ml-2 font-display">Searching…</Text>
             </View>
           )}
-          {error && <Text className="text-red-400 text-xs">{error}</Text>}
+          {error && <Text className="text-danger text-xs font-display">{error}</Text>}
         </View>
       </View>
 
       <FlatList
         data={results}
         keyExtractor={(c) => c.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
-        ItemSeparatorComponent={() => <View className="h-px bg-gray-900 my-2" />}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+        ItemSeparatorComponent={() => <View className="h-px bg-surface my-2" />}
         ListEmptyComponent={
           loading ? null : (
             <View className="items-center py-10">
-              <Text className="text-gray-500 text-sm">
+              <Text className="text-muted text-sm font-display">
                 {query ? 'No cards found.' : 'No cards in the catalog yet.'}
               </Text>
-              {!query && (
-                <Text className="text-gray-600 text-xs mt-2">
-                  Run the seed script to import the Gundam catalog.
-                </Text>
-              )}
             </View>
           )
         }
         renderItem={({ item }) => (
-          <CardRow card={item} onPress={onSelect ? () => onSelect(item) : undefined} />
+          <CardRow
+            card={item}
+            added={addedIds?.has(item.id) ?? false}
+            onPress={onSelect ? () => onSelect(item) : undefined}
+          />
         )}
       />
     </View>
   )
 }
 
-function CardRow({ card, onPress }: { card: Card; onPress?: () => void }) {
+function CardRow({ card, onPress, added }: { card: Card; onPress?: () => void; added: boolean }) {
   const content = (
-    <View className="flex-row items-center bg-gray-900 rounded-xl p-3">
-      {card.image_url ? (
-        <Image
-          source={{ uri: card.image_url }}
-          className="w-12 h-16 rounded-md bg-gray-800"
-          resizeMode="cover"
-        />
-      ) : (
-        <View className="w-12 h-16 rounded-md bg-gray-800" />
-      )}
+    <View className="flex-row items-center bg-surface border border-subtle rounded-xl p-3">
+      <CardThumb uri={card.image_url} className="w-12 h-16" radius="rounded-md" />
       <View className="flex-1 ml-3">
-        <Text numberOfLines={1} className="text-white font-semibold text-base">
-          {card.name}
+        <Text className="text-ink font-mono-bold text-[15px]" numberOfLines={1}>
+          {card.id}
         </Text>
-        <View className="flex-row items-center mt-1">
-          <Text className="text-gray-400 text-xs font-mono">{card.id}</Text>
-          {card.set_name && (
-            <Text numberOfLines={1} className="text-gray-500 text-xs ml-2 flex-1">
-              · {card.set_name}
-            </Text>
-          )}
-        </View>
-        {(card.color || card.card_type || card.rarity) && (
-          <View className="flex-row mt-1.5 gap-1.5">
-            {card.color && <Tag>{card.color}</Tag>}
-            {card.card_type && <Tag>{card.card_type}</Tag>}
-            {card.rarity && <Tag>{card.rarity}</Tag>}
-          </View>
+        {card.set_name && (
+          <Text numberOfLines={1} className="text-muted text-xs mt-0.5 font-display">
+            {card.set_name}
+          </Text>
         )}
       </View>
+      {onPress && (
+        <View
+          className={`w-8 h-8 rounded-lg items-center justify-center ${added ? 'bg-primary/10' : 'bg-primary'}`}
+        >
+          <Ionicons name={added ? 'checkmark' : 'add'} size={18} color={added ? colors.primary : colors.primaryInk} />
+        </View>
+      )}
     </View>
   )
 
@@ -123,15 +119,5 @@ function CardRow({ card, onPress }: { card: Card; onPress?: () => void }) {
     <Pressable onPress={onPress} className="active:opacity-70">
       {content}
     </Pressable>
-  )
-}
-
-function Tag({ children }: { children: string }) {
-  return (
-    <View className="bg-gray-800 px-2 py-0.5 rounded">
-      <Text className="text-gray-300 text-[10px] font-medium uppercase tracking-wider">
-        {children}
-      </Text>
-    </View>
   )
 }

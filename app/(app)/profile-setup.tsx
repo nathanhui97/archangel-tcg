@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -9,11 +9,15 @@ import {
   Platform,
   ScrollView,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 import * as Location from 'expo-location'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import type { Game } from '@/types'
 import { GAME_LABELS } from '@/types'
+import { Button, MonoLabel } from '@/components/ui'
+import { colors } from '@/lib/theme'
 
 const HANDLE_REGEX = /^[a-zA-Z0-9_]{3,20}$/
 const ALL_GAMES: Game[] = ['gundam', 'one_piece']
@@ -21,6 +25,7 @@ const ALL_GAMES: Game[] = ['gundam', 'one_piece']
 type HandleStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
 export default function ProfileSetupScreen() {
+  const router = useRouter()
   const { session, refreshProfile, signOut } = useAuth()
   const [handle, setHandle] = useState('')
   const [handleStatus, setHandleStatus] = useState<HandleStatus>('idle')
@@ -36,9 +41,7 @@ export default function ProfileSetupScreen() {
 
   function toggleGame(g: Game) {
     setError(null)
-    setGames((prev) =>
-      prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
-    )
+    setGames((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
   }
 
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -63,9 +66,7 @@ export default function ProfileSetupScreen() {
   }
 
   async function checkAvailability(value: string) {
-    const { data, error: sbError } = await supabase.rpc('is_handle_available', {
-      p_handle: value,
-    })
+    const { data, error: sbError } = await supabase.rpc('is_handle_available', { p_handle: value })
     if (sbError) {
       setHandleStatus('idle')
       return
@@ -84,14 +85,10 @@ export default function ProfileSetupScreen() {
     }
 
     try {
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Low,
-      })
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low })
       // Round to 2 decimals (~1.1 km grid) — privacy by design.
-      const roundedLat = Math.round(pos.coords.latitude * 100) / 100
-      const roundedLng = Math.round(pos.coords.longitude * 100) / 100
-      setLat(roundedLat)
-      setLng(roundedLng)
+      setLat(Math.round(pos.coords.latitude * 100) / 100)
+      setLng(Math.round(pos.coords.longitude * 100) / 100)
       setLocStatus('set')
     } catch {
       setError('Could not read your location. Try again.')
@@ -132,8 +129,19 @@ export default function ProfileSetupScreen() {
     setSaving(false)
 
     if (sbError) {
-      // Race: someone may have grabbed the handle between check and insert.
       if (sbError.code === '23505') {
+        // Unique violation — either the handle is taken by someone else, or we
+        // already created our own profile (e.g. a double-submit). Check which.
+        const { data: mine } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', session.user.id)
+          .maybeSingle()
+        if (mine) {
+          await refreshProfile()
+          router.replace('/(app)/(tabs)/trade')
+          return
+        }
         setHandleStatus('taken')
         setError('That handle was just taken. Try another.')
       } else {
@@ -143,90 +151,31 @@ export default function ProfileSetupScreen() {
     }
 
     await refreshProfile()
-    // Auth gate in root layout will move us to /(app) automatically.
+    router.replace('/(app)/(tabs)/trade')
   }
 
   function handleHint() {
     switch (handleStatus) {
       case 'checking':
-        return <Text className="text-gray-500 text-xs mt-2">Checking…</Text>
-      case 'available':
-        return <Text className="text-emerald-400 text-xs mt-2">Handle is available</Text>
+        return <Text className="text-faint text-xs mt-2 font-display">Checking…</Text>
       case 'taken':
-        return <Text className="text-red-400 text-xs mt-2">Handle is taken</Text>
+        return <Text className="text-danger text-xs mt-2 font-display">Handle is taken</Text>
       case 'invalid':
-        return (
-          <Text className="text-gray-500 text-xs mt-2">
-            3–20 characters, letters/numbers/underscore only
-          </Text>
-        )
       default:
         return (
-          <Text className="text-gray-500 text-xs mt-2">
-            Other players see this. 3–20 chars.
+          <Text className="text-faint text-xs mt-2 font-display">
+            3–20 characters · letters, numbers, _
           </Text>
         )
     }
-  }
-
-  function locationButton() {
-    if (locStatus === 'capturing') {
-      return (
-        <View className="bg-gray-800 py-4 rounded-2xl items-center flex-row justify-center">
-          <ActivityIndicator color="#cbd5e1" />
-          <Text className="text-gray-300 ml-2">Getting your area…</Text>
-        </View>
-      )
-    }
-    if (locStatus === 'set') {
-      return (
-        <View className="bg-gray-900 border border-emerald-700/40 px-4 py-4 rounded-2xl">
-          <Text className="text-emerald-300 font-medium">Location set</Text>
-          <Text className="text-gray-500 text-xs mt-1">
-            Stored as an approximate area (~1 km grid). We never store your exact GPS.
-          </Text>
-          <Pressable
-            onPress={captureLocation}
-            className="mt-3 active:opacity-60"
-          >
-            <Text className="text-indigo-400 text-sm">Update</Text>
-          </Pressable>
-        </View>
-      )
-    }
-    if (locStatus === 'denied') {
-      return (
-        <View className="bg-gray-900 border border-red-900/40 px-4 py-4 rounded-2xl">
-          <Text className="text-red-300 font-medium">Location denied</Text>
-          <Text className="text-gray-500 text-xs mt-1">
-            Enable location in Settings to use matching. We only store an approximate area.
-          </Text>
-          <Pressable onPress={captureLocation} className="mt-3 active:opacity-60">
-            <Text className="text-indigo-400 text-sm">Try again</Text>
-          </Pressable>
-        </View>
-      )
-    }
-    return (
-      <Pressable
-        onPress={captureLocation}
-        className="bg-gray-800 active:opacity-80 py-4 rounded-2xl items-center"
-      >
-        <Text className="text-white font-medium">Use my approximate location</Text>
-      </Pressable>
-    )
   }
 
   const canSave =
-    handleStatus === 'available' &&
-    games.length > 0 &&
-    lat !== null &&
-    lng !== null &&
-    !saving
+    handleStatus === 'available' && games.length > 0 && lat !== null && lng !== null && !saving
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-gray-950"
+      className="flex-1 bg-bg"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
@@ -234,32 +183,38 @@ export default function ProfileSetupScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="flex-1 px-6 pt-12">
-          <Text className="text-3xl font-bold text-white">Set up your profile</Text>
-          <Text className="text-gray-400 mt-2">
-            Pick a handle and your area so we can find Gundam trades near you.
-          </Text>
+          <Text className="text-[23px] font-display-semibold text-ink">Set up your profile</Text>
+          <Text className="text-muted mt-2 font-display">Just three things to get on the radar.</Text>
 
-          <View className="mt-10">
-            <Text className="text-gray-300 text-sm mb-2 font-medium">Handle</Text>
-            <TextInput
-              value={handle}
-              onChangeText={onChangeHandle}
-              placeholder="e.g. cosmic_era"
-              placeholderTextColor="#475569"
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={20}
-              editable={!saving}
-              className="bg-gray-900 text-white px-4 py-4 rounded-xl border border-gray-800 text-base"
-            />
+          {/* Handle */}
+          <View className="mt-9">
+            <MonoLabel className="mb-2">HANDLE</MonoLabel>
+            <View className="flex-row items-center bg-surface rounded-xl px-4 border border-subtle">
+              <Text className="text-primary text-base font-mono-medium">@</Text>
+              <TextInput
+                value={handle}
+                onChangeText={onChangeHandle}
+                placeholder="ryze"
+                placeholderTextColor={colors.faint2}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={20}
+                editable={!saving}
+                className="flex-1 text-ink py-4 ml-1 text-base font-mono"
+              />
+              {handleStatus === 'available' && (
+                <View className="flex-row items-center gap-1">
+                  <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                  <Text className="text-primary text-xs font-display-medium">Available</Text>
+                </View>
+              )}
+            </View>
             {handleHint()}
           </View>
 
-          <View className="mt-8">
-            <Text className="text-gray-300 text-sm mb-2 font-medium">Games you play</Text>
-            <Text className="text-gray-500 text-xs mb-3">
-              Pick at least one. Matches are per-game — you only see trades for games you play.
-            </Text>
+          {/* Games */}
+          <View className="mt-7">
+            <MonoLabel className="mb-3">GAMES YOU PLAY</MonoLabel>
             <View className="flex-row gap-2">
               {ALL_GAMES.map((g) => {
                 const selected = games.includes(g)
@@ -267,18 +222,15 @@ export default function ProfileSetupScreen() {
                   <Pressable
                     key={g}
                     onPress={() => toggleGame(g)}
-                    className={`flex-1 py-3 rounded-xl border items-center active:opacity-80 ${
-                      selected
-                        ? 'bg-indigo-600 border-indigo-500'
-                        : 'bg-gray-900 border-gray-800'
+                    className={`flex-row items-center gap-1.5 px-4 py-2.5 rounded-xl border active:opacity-80 ${
+                      selected ? 'bg-primary/10 border-primary' : 'bg-surface border-subtle'
                     }`}
                   >
+                    {selected && <Ionicons name="checkmark" size={14} color={colors.primary} />}
                     <Text
-                      className={`font-semibold text-sm ${
-                        selected ? 'text-white' : 'text-gray-300'
-                      }`}
+                      className={`font-display-semibold text-sm ${selected ? 'text-primary' : 'text-muted-2'}`}
                     >
-                      {GAME_LABELS[g]}
+                      {g === 'gundam' ? 'Gundam' : 'One Piece'}
                     </Text>
                   </Pressable>
                 )
@@ -286,34 +238,45 @@ export default function ProfileSetupScreen() {
             </View>
           </View>
 
-          <View className="mt-8">
-            <Text className="text-gray-300 text-sm mb-2 font-medium">Approximate location</Text>
-            {locationButton()}
+          {/* Location / City */}
+          <View className="mt-7">
+            <MonoLabel className="mb-2">CITY</MonoLabel>
+            <Pressable
+              onPress={captureLocation}
+              disabled={saving || locStatus === 'capturing'}
+              className={`flex-row items-center bg-surface rounded-xl px-4 py-4 border ${
+                locStatus === 'set' ? 'border-subtle' : locStatus === 'denied' ? 'border-danger/35' : 'border-subtle'
+              } active:opacity-80`}
+            >
+              <Ionicons name="location-outline" size={18} color={locStatus === 'set' ? colors.primary : colors.faint2} />
+              <Text className={`flex-1 ml-3 text-base font-display ${locStatus === 'set' ? 'text-ink' : 'text-faint-2'}`}>
+                {locStatus === 'set'
+                  ? 'Your area is set'
+                  : locStatus === 'capturing'
+                    ? 'Getting your area…'
+                    : locStatus === 'denied'
+                      ? 'Location denied — tap to retry'
+                      : 'Use my approximate location'}
+              </Text>
+              {locStatus === 'capturing' ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : locStatus === 'set' ? (
+                <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+              ) : null}
+            </Pressable>
+            <Text className="text-faint text-xs mt-2 font-display">
+              Only your general area is shared with nearby traders — never a precise address.
+            </Text>
           </View>
 
-          {error && (
-            <Text className="text-red-400 text-sm mt-4 text-center">{error}</Text>
-          )}
+          {error && <Text className="text-danger text-sm mt-4 text-center font-display">{error}</Text>}
 
-          <Pressable
-            onPress={handleSave}
-            disabled={!canSave}
-            className={`mt-8 py-4 rounded-2xl items-center ${
-              canSave ? 'bg-indigo-600 active:opacity-80' : 'bg-gray-800'
-            }`}
-          >
-            {saving ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text className="text-white font-semibold text-base">Continue</Text>
-            )}
-          </Pressable>
+          <View className="mt-8">
+            <Button title="Continue" onPress={handleSave} loading={saving} disabled={!canSave} />
+          </View>
 
-          <Pressable
-            onPress={signOut}
-            className="mt-6 items-center active:opacity-60"
-          >
-            <Text className="text-gray-500 text-sm">Sign out</Text>
+          <Pressable onPress={signOut} className="mt-6 items-center active:opacity-60">
+            <Text className="text-faint text-sm font-display">Sign out</Text>
           </Pressable>
         </View>
       </ScrollView>

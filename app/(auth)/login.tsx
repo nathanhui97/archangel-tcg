@@ -4,103 +4,166 @@ import {
   Text,
   TextInput,
   Pressable,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '@/lib/supabase'
+import { Button, MonoLabel } from '@/components/ui'
+import { colors } from '@/lib/theme'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function LoginScreen() {
   const router = useRouter()
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
-  const [sending, setSending] = useState(false)
+  const [password, setPassword] = useState('')
+  const [showPw, setShowPw] = useState(false)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
-  async function handleSend() {
-    const trimmed = email.trim().toLowerCase()
-    if (!EMAIL_REGEX.test(trimmed)) {
+  const isSignup = mode === 'signup'
+
+  function clearMessages() {
+    if (error) setError(null)
+    if (notice) setNotice(null)
+  }
+
+  async function handleSubmit() {
+    const e = email.trim().toLowerCase()
+    if (!EMAIL_REGEX.test(e)) {
       setError("That doesn't look like a valid email.")
       return
     }
-    setError(null)
-    setSending(true)
-
-    const { error: sbError } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: {
-        shouldCreateUser: true, // first-time users get an account
-      },
-    })
-
-    setSending(false)
-
-    if (sbError) {
-      setError(sbError.message)
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.')
       return
     }
-
-    router.push({ pathname: '/(auth)/verify', params: { email: trimmed } })
+    setError(null)
+    setNotice(null)
+    setBusy(true)
+    try {
+      if (isSignup) {
+        const { data, error: err } = await supabase.auth.signUp({ email: e, password })
+        if (err) {
+          setError(err.message)
+          return
+        }
+        if (!data.session) {
+          // Email confirmation is enabled → confirm with a 6-digit code in-app.
+          router.push({ pathname: '/(auth)/verify', params: { email: e } })
+          return
+        }
+        // Session present (confirmation off) → AuthGate routes to profile setup.
+      } else {
+        const { error: err } = await supabase.auth.signInWithPassword({ email: e, password })
+        if (err) {
+          setError(err.message)
+          return
+        }
+        // Session set → AuthGate routes forward.
+      }
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-gray-950"
+      className="flex-1 bg-bg"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View className="flex-1 px-6 pt-12">
-        <Text className="text-3xl font-bold text-white">Sign in</Text>
-        <Text className="text-gray-400 mt-2">
-          We&apos;ll email you a 6-digit code.
+      <View className="flex-1 px-6 pt-10">
+        <MonoLabel className="text-primary">{isSignup ? 'CREATE ACCOUNT' : 'SIGN IN'}</MonoLabel>
+        <Text className="text-[28px] font-display-semibold text-ink mt-3">
+          {isSignup ? 'Create your account' : 'Welcome back'}
+        </Text>
+        <Text className="text-muted mt-2 font-display">
+          {isSignup ? 'Pick an email and password to get started.' : 'Sign in with your email and password.'}
         </Text>
 
-        <View className="mt-10">
-          <Text className="text-gray-300 text-sm mb-2 font-medium">Email</Text>
-          <TextInput
-            value={email}
-            onChangeText={(t) => {
-              setEmail(t)
-              if (error) setError(null)
-            }}
-            placeholder="you@example.com"
-            placeholderTextColor="#475569"
-            autoCapitalize="none"
-            autoComplete="email"
-            autoCorrect={false}
-            keyboardType="email-address"
-            inputMode="email"
-            textContentType="emailAddress"
-            returnKeyType="send"
-            onSubmitEditing={handleSend}
-            editable={!sending}
-            className="bg-gray-900 text-white px-4 py-4 rounded-xl border border-gray-800 text-base"
+        {/* Email */}
+        <View className="mt-9">
+          <MonoLabel className="mb-2">EMAIL</MonoLabel>
+          <View className="flex-row items-center bg-surface rounded-xl px-4 border border-subtle">
+            <Ionicons name="mail-outline" size={18} color={colors.primary} />
+            <TextInput
+              value={email}
+              onChangeText={(t) => {
+                setEmail(t)
+                clearMessages()
+              }}
+              placeholder="you@example.com"
+              placeholderTextColor={colors.faint2}
+              autoCapitalize="none"
+              autoComplete="email"
+              autoCorrect={false}
+              keyboardType="email-address"
+              inputMode="email"
+              textContentType="emailAddress"
+              editable={!busy}
+              className="flex-1 text-ink py-4 ml-3 text-base font-mono"
+            />
+          </View>
+        </View>
+
+        {/* Password */}
+        <View className="mt-5">
+          <MonoLabel className="mb-2">PASSWORD</MonoLabel>
+          <View className="flex-row items-center bg-surface rounded-xl px-4 border border-subtle">
+            <Ionicons name="lock-closed-outline" size={18} color={colors.primary} />
+            <TextInput
+              value={password}
+              onChangeText={(t) => {
+                setPassword(t)
+                clearMessages()
+              }}
+              placeholder="••••••••"
+              placeholderTextColor={colors.faint2}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry={!showPw}
+              textContentType={isSignup ? 'newPassword' : 'password'}
+              editable={!busy}
+              onSubmitEditing={handleSubmit}
+              returnKeyType="go"
+              className="flex-1 text-ink py-4 ml-3 text-base font-mono"
+            />
+            <Pressable onPress={() => setShowPw((s) => !s)} hitSlop={8} className="active:opacity-60">
+              <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.faint2} />
+            </Pressable>
+          </View>
+          {isSignup && <Text className="text-faint text-xs mt-2 font-display">At least 6 characters.</Text>}
+        </View>
+
+        {error && <Text className="text-danger text-sm mt-3 font-display">{error}</Text>}
+        {notice && <Text className="text-primary text-sm mt-3 font-display">{notice}</Text>}
+
+        <View className="mt-6">
+          <Button
+            title={isSignup ? 'Create account' : 'Sign in'}
+            onPress={handleSubmit}
+            loading={busy}
+            disabled={email.length === 0 || password.length === 0}
           />
-          {error && (
-            <Text className="text-red-400 text-sm mt-2">{error}</Text>
-          )}
         </View>
 
         <Pressable
-          onPress={handleSend}
-          disabled={sending || email.length === 0}
-          className={`mt-6 py-4 rounded-2xl items-center ${
-            sending || email.length === 0
-              ? 'bg-gray-800'
-              : 'bg-indigo-600 active:opacity-80'
-          }`}
+          onPress={() => {
+            setMode(isSignup ? 'signin' : 'signup')
+            setError(null)
+            setNotice(null)
+          }}
+          className="mt-6 items-center active:opacity-60"
         >
-          {sending ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text className="text-white font-semibold text-base">Send code</Text>
-          )}
+          <Text className="text-muted text-sm font-display">
+            {isSignup ? 'Already have an account? ' : 'New here? '}
+            <Text className="text-primary font-display-medium">{isSignup ? 'Sign in' : 'Create an account'}</Text>
+          </Text>
         </Pressable>
-
-        <Text className="text-gray-500 text-xs mt-4 text-center">
-          By continuing you agree we&apos;ll send a one-time code to this email.
-        </Text>
       </View>
     </KeyboardAvoidingView>
   )

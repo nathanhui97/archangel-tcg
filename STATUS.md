@@ -14,7 +14,7 @@ A local trading card game app (iOS + Android) where **Gundam Card Game** players
 
 ## Key decisions (locked in)
 
-- **App name: Bindar** (Binder + Radar). Locked 2026-06-24. Black + phosphor green theme planned for Milestone 9 polish (placeholder dark gray + indigo for now).
+- **App name: Bindar** (Binder + Radar). Locked 2026-06-24. **Black + phosphor-green theme is now implemented** (2026-06-25) from the Claude Design comp "Bindar Screens" — every already-built screen re-skinned off the placeholder gray/indigo. See "Design system" below.
 - **Platform:** iOS + Android from one Expo codebase. Mac available for local simulator.
 - **Launch game:** Gundam Card Game only. One Piece parked for post-launch.
 - **Binders:** Users can create as many named binders as they want, each toggled public or private
@@ -117,7 +117,23 @@ Mobile UI testing was not possible on the current work laptop due to corporate S
 | 6 | Matching screen | — | Query: wantlist ↔ public `binder_items`, same game, within 25 km. Server-side distance via PostGIS or `earth_distance`. |
 | 7 | Push notifications | — | expo-notifications. Supabase trigger on insert of public `binder_item` → check for nearby wantlist matches → push. **TestFlight + Internal Testing builds by now.** |
 | 8 | Messaging | — | Supabase Realtime 1:1 chat. Suggest local game shop as meetup. |
-| 9 | Polish + launch | — | Swap placeholder name + icons. App Store + Play Store submission. Onboard first 20–50 players. |
+| 9 | Polish + launch | 🟡 Partial | **Theme + re-skin done early** (2026-06-25): phosphor-green design system applied to all built screens. Still to do: real app icon/splash (radar mark is ready as `RadarLogo`), App Store + Play Store submission, onboard first 20–50 players. |
+
+## Design system (2026-06-25)
+
+Imported the Claude Design comp **"Bindar Screens.dc.html"** (27-screen tactical-radar design) and built the foundation + re-skinned every existing screen. Net-new feature screens in the comp (Card Detail, Messages/Chat, Trader Profile, Trade/Cash proposals, Matches, cold-start empties) were intentionally **not** built — they depend on Milestones 6–8 backend.
+
+**Theme tokens** (`tailwind.config.js` + `lib/theme.ts`):
+- Background `#050706`, surfaces `#0E1512`, green-tinted hairline borders
+- Single accent: phosphor green `#35F58A` (ink `#04140C` on top)
+- Gold `#C9A84A` = Foil only · Amber `#F5C24A` = Pending only · Red `#FF6B6B` = destructive only
+- Fonts: **Space Grotesk** (prose/headings) + **JetBrains Mono** (codes, numbers, distances, uppercase labels), loaded in `app/_layout.tsx` via `@expo-google-fonts/*`
+
+**Reusable primitives** (`components/ui/`): `RadarLogo` (canonical Bindar mark + animated sweep — reuse for app icon/splash), `Button`, `Chip`, `Badge`, `CardThumb`, `StatusDot`, `MonoLabel`, `Card`, `PressRow`, `Cursor`, `DistanceTag`.
+
+New deps: `@expo-google-fonts/space-grotesk`, `@expo-google-fonts/jetbrains-mono`, `expo-font`, `react-native-svg`.
+
+> **Build note (Windows):** `npx expo export` fails at the `hermesc.exe` bytecode step on RN 0.81 internals (a known Windows Hermes issue, unrelated to app code). The JS bundle itself is verified clean — `npx expo export --no-bytecode` and `npx tsc --noEmit` both pass. EAS device builds use a different hermesc and are unaffected.
 
 ---
 

@@ -3,7 +3,8 @@ import { supabase } from './supabase'
 import type { Card } from '@/types'
 
 type SearchOptions = {
-  game?: string
+  /** Game to filter by. Pass `null` to search across all TCGs (people mix). */
+  game?: string | null
   setCode?: string | null
   color?: string | null
   cardType?: string | null
@@ -43,10 +44,12 @@ export function useCardSearch(query: string, options: SearchOptions = {}) {
       let q = supabase
         .from('cards')
         .select('*')
-        .eq('game', game)
         .order('set_code', { ascending: false })
         .order('number', { ascending: true })
         .limit(limit)
+
+      // game === null → search across all TCGs (mixed binders)
+      if (game) q = q.eq('game', game)
 
       const trimmed = query.trim()
       if (trimmed) {
@@ -77,6 +80,33 @@ export function useCardSearch(query: string, options: SearchOptions = {}) {
   }, [query, game, setCode, color, cardType, limit])
 
   return { results, loading, error }
+}
+
+/** Fetch a single card by its full id (e.g. "GD01-001"). */
+export function useCard(id: string | undefined) {
+  const [card, setCard] = useState<Card | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    if (!id) return
+    setLoading(true)
+    supabase
+      .from('cards')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return
+        setCard((data ?? null) as Card | null)
+        setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [id])
+
+  return { card, loading }
 }
 
 /** Distinct values for the filter dropdowns. */

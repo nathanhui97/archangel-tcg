@@ -3,9 +3,10 @@ module.exports = function (api) {
   return {
     presets: [['babel-preset-expo', { jsxImportSource: 'nativewind' }]],
     plugins: [
-      '@babel/plugin-transform-class-properties',
-      '@babel/plugin-transform-private-methods',
-      '@babel/plugin-transform-private-property-in-object',
+      // babel-preset-expo already handles class-properties / private-methods.
+      // Required by react-native-reanimated v4 (which NativeWind pulls in).
+      // MUST be the last plugin.
+      'react-native-worklets/plugin',
     ],
   }
 }
