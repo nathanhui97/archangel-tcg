@@ -112,18 +112,22 @@ export type TradeCard = {
   is_foil: boolean
 }
 
-export function useMyPublicCards() {
-  const { session } = useAuth()
+/** Every card across a given user's PUBLIC binders (their tradeable cards). */
+export function useUserPublicCards(userId: string | null) {
   const [cards, setCards] = useState<TradeCard[]>([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    if (!session) return
+    if (!userId) {
+      setCards([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const { data } = await supabase
       .from('binder_items')
       .select('id, card_id, quantity, condition, is_foil, created_at, card:cards(image_url, name), binder:binders!inner(is_public, user_id)')
-      .eq('binder.user_id', session.user.id)
+      .eq('binder.user_id', userId)
       .eq('binder.is_public', true)
       .order('created_at', { ascending: false })
     const mapped: TradeCard[] = (data ?? []).map((r: any) => ({
@@ -137,13 +141,19 @@ export function useMyPublicCards() {
     }))
     setCards(mapped)
     setLoading(false)
-  }, [session])
+  }, [userId])
 
   useEffect(() => {
     load()
   }, [load])
 
   return { cards, loading, refresh: load }
+}
+
+/** Every card across the current user's PUBLIC binders. */
+export function useMyPublicCards() {
+  const { session } = useAuth()
+  return useUserPublicCards(session?.user.id ?? null)
 }
 
 export async function createBinder(

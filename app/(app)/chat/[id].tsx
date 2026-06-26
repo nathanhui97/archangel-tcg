@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View,
   Text,
+  Image,
   FlatList,
   TextInput,
   Pressable,
@@ -14,18 +15,118 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '@/lib/auth'
-import { useTrade, sendMessage, respondToTrade, markTradeRead } from '@/lib/trades'
+import {
+  useTrade,
+  sendMessage,
+  respondToProposal,
+  markTradeRead,
+  type ProposalView,
+  type ProposalItemView,
+} from '@/lib/trades'
 import { colors } from '@/lib/theme'
 import type { Message } from '@/types'
 
-function Bubble({ message, mine }: { message: Message; mine: boolean }) {
+function fmtTime(iso: string) {
+  try {
+    return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  } catch {
+    return ''
+  }
+}
+
+function TextBubble({ message, mine }: { message: Message; mine: boolean }) {
   return (
     <View className={`px-4 mb-2 ${mine ? 'items-end' : 'items-start'}`}>
-      <View
-        className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 ${mine ? 'bg-primary rounded-br-md' : 'bg-surface-control rounded-bl-md'}`}
-      >
+      <View className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 ${mine ? 'bg-primary rounded-br-md' : 'bg-surface-control rounded-bl-md'}`}>
         <Text className={`text-[15px] font-display ${mine ? 'text-primary-ink' : 'text-ink'}`}>{message.body}</Text>
       </View>
+      <Text className="text-faint-2 text-[10px] font-mono mt-1 mx-1">{fmtTime(message.created_at)}</Text>
+    </View>
+  )
+}
+
+const STATUS_BADGE: Record<string, { label: string; box: string; text: string }> = {
+  pending: { label: 'PENDING', box: 'bg-amber/10', text: 'text-amber' },
+  accepted: { label: 'ACCEPTED', box: 'bg-primary/10', text: 'text-primary' },
+  declined: { label: 'DECLINED', box: 'bg-danger/10', text: 'text-danger' },
+  withdrawn: { label: 'WITHDRAWN', box: 'bg-surface-control', text: 'text-faint-2' },
+}
+
+function ItemLine({ label, items, cash, accent }: { label: string; items: ProposalItemView[]; cash: number; accent: boolean }) {
+  return (
+    <View className="mt-2">
+      <Text className={`font-mono-bold text-[10px] tracking-wider ${accent ? 'text-primary' : 'text-muted-2'}`}>{label}</Text>
+      <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+        {items.map((it, i) => (
+          <View key={i} className="flex-row items-center gap-1">
+            <View style={{ width: 20, height: 28 }} className="rounded overflow-hidden bg-surface-raised border border-subtle">
+              {it.image_url ? <Image source={{ uri: it.image_url }} resizeMode="cover" className="w-full h-full" /> : null}
+            </View>
+            <Text className="text-ink font-mono text-[11px]">
+              {it.card_id}
+              {it.is_foil ? <Text className="text-gold"> Foil</Text> : null}
+              {it.quantity > 1 ? ` ×${it.quantity}` : ''}
+            </Text>
+          </View>
+        ))}
+        {cash > 0 && (
+          <View className="px-1.5 py-0.5 rounded bg-surface-control">
+            <Text className="text-gold font-mono-bold text-[11px]">${(cash / 100).toFixed(0)}</Text>
+          </View>
+        )}
+        {items.length === 0 && cash === 0 && <Text className="text-faint text-[11px] font-display">—</Text>}
+      </View>
+    </View>
+  )
+}
+
+function ProposalBubble({
+  message, view, mine, canRespond, onAccept, onDecline,
+}: {
+  message: Message
+  view: ProposalView
+  mine: boolean
+  canRespond: boolean
+  onAccept: () => void
+  onDecline: () => void
+}) {
+  const { proposal } = view
+  // From the viewer's perspective (proposer's "give" is what they receive, etc.)
+  const youGive = mine ? view.give : view.get
+  const youGet = mine ? view.get : view.give
+  const giveCash = mine ? proposal.cash_cents : 0
+  const getCash = mine ? 0 : proposal.cash_cents
+  const badge = STATUS_BADGE[proposal.status] ?? STATUS_BADGE.pending
+
+  return (
+    <View className={`px-4 mb-2 ${mine ? 'items-end' : 'items-start'}`}>
+      <View className="w-[86%] rounded-2xl border border-primary-soft bg-surface px-3.5 py-3">
+        <View className="flex-row items-center gap-2">
+          <Ionicons name="swap-horizontal" size={15} color={colors.primary} />
+          <Text className="text-ink font-display-semibold text-sm flex-1">Trade proposal</Text>
+          <View className={`rounded px-1.5 py-0.5 ${badge.box}`}>
+            <Text className={`font-mono-bold text-[9px] ${badge.text}`}>{badge.label}</Text>
+          </View>
+        </View>
+
+        <View className="h-px my-2" style={{ backgroundColor: colors.borderHair }} />
+        <ItemLine label="YOU GIVE" items={youGive} cash={giveCash} accent={false} />
+        <ItemLine label="YOU GET" items={youGet} cash={getCash} accent />
+
+        {canRespond && proposal.status === 'pending' && (
+          <View className="flex-row gap-2 mt-3">
+            <Pressable onPress={onDecline} className="flex-1 items-center py-2 rounded-lg border border-subtle active:opacity-70">
+              <Text className="text-muted-2 font-display-semibold text-sm">Decline</Text>
+            </Pressable>
+            <Pressable onPress={onAccept} className="flex-1 items-center py-2 rounded-lg bg-primary active:opacity-90">
+              <Text className="font-display-bold text-sm" style={{ color: colors.primaryInk }}>Accept</Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+      <Text className="text-faint-2 text-[10px] font-mono mt-1 mx-1">
+        {mine ? 'You proposed' : 'Proposed'} · {fmtTime(message.created_at)}
+      </Text>
     </View>
   )
 }
@@ -35,13 +136,12 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets()
   const { session } = useAuth()
   const uid = session?.user.id
-  const { trade, messages, otherHandle, iAmRequester, loading, refresh } = useTrade(id)
+  const { trade, messages, proposalsById, otherHandle, iAmRequester, loading, refresh } = useTrade(id)
 
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const markedRef = useRef(false)
 
-  // Mark read once the thread loads (and whenever new messages arrive).
   useEffect(() => {
     if (trade && !markedRef.current) {
       markedRef.current = true
@@ -50,8 +150,8 @@ export default function ChatScreen() {
   }, [trade, iAmRequester])
 
   const status = trade?.status
+  const closed = status === 'declined' || status === 'cancelled'
   const canMessage = status === 'pending' || status === 'accepted' || status === 'completed'
-  const isRecipientPending = status === 'pending' && !iAmRequester
 
   async function onSend() {
     const body = draft.trim()
@@ -69,10 +169,10 @@ export default function ChatScreen() {
   }
 
   const respond = useCallback(
-    async (next: 'accepted' | 'declined') => {
+    async (proposalId: string, accept: boolean) => {
       if (!id) return
       try {
-        await respondToTrade(id, next)
+        await respondToProposal(proposalId, id, accept)
         await refresh()
       } catch (err) {
         Alert.alert('Error', (err as Error).message)
@@ -82,6 +182,23 @@ export default function ChatScreen() {
   )
 
   const reversed = [...messages].reverse()
+
+  const renderItem = ({ item }: { item: Message }) => {
+    const mine = item.sender_id === uid
+    if (item.kind === 'proposal' && item.proposal_id && proposalsById[item.proposal_id]) {
+      return (
+        <ProposalBubble
+          message={item}
+          view={proposalsById[item.proposal_id]}
+          mine={mine}
+          canRespond={!mine && !closed}
+          onAccept={() => respond(item.proposal_id as string, true)}
+          onDecline={() => respond(item.proposal_id as string, false)}
+        />
+      )
+    }
+    return <TextBubble message={item} mine={mine} />
+  }
 
   return (
     <KeyboardAvoidingView
@@ -97,47 +214,9 @@ export default function ChatScreen() {
         </View>
       ) : (
         <>
-          {/* Status banner */}
-          {status && status !== 'accepted' && (
-            <View className="mx-4 mt-3 bg-surface border border-subtle rounded-2xl px-4 py-3">
-              {isRecipientPending ? (
-                <>
-                  <Text className="text-ink font-display-semibold text-sm">@{otherHandle} wants to trade</Text>
-                  <Text className="text-muted text-xs mt-0.5 font-display">Accept to start arranging a meetup.</Text>
-                  <View className="flex-row gap-3 mt-3">
-                    <Pressable
-                      onPress={() => respond('declined')}
-                      className="flex-1 items-center py-2.5 rounded-xl border border-subtle active:opacity-70"
-                    >
-                      <Text className="text-muted-2 font-display-semibold text-sm">Decline</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => respond('accepted')}
-                      className="flex-1 items-center py-2.5 rounded-xl bg-primary active:opacity-90"
-                    >
-                      <Text className="font-display-bold text-sm" style={{ color: colors.primaryInk }}>Accept</Text>
-                    </Pressable>
-                  </View>
-                </>
-              ) : status === 'pending' ? (
-                <Text className="text-muted text-sm font-display">Request sent · waiting for @{otherHandle} to accept.</Text>
-              ) : status === 'declined' ? (
-                <Text className="text-faint-2 text-sm font-display">This trade was declined.</Text>
-              ) : status === 'cancelled' ? (
-                <Text className="text-faint-2 text-sm font-display">This trade was cancelled.</Text>
-              ) : (
-                <Text className="text-faint-2 text-sm font-display">Trade completed.</Text>
-              )}
-            </View>
-          )}
-
           {reversed.length === 0 ? (
             <View className="flex-1 items-center justify-center px-10">
-              <Text className="text-muted text-sm text-center font-display">
-                {isRecipientPending
-                  ? 'No messages yet.'
-                  : 'Send a message to introduce the trade — what you’d like and what you’re offering.'}
-              </Text>
+              <Text className="text-muted text-sm text-center font-display">No messages yet.</Text>
             </View>
           ) : (
             <FlatList
@@ -146,14 +225,15 @@ export default function ChatScreen() {
               keyExtractor={(m) => m.id}
               contentContainerStyle={{ paddingVertical: 12 }}
               keyboardDismissMode="interactive"
-              renderItem={({ item }) => <Bubble message={item} mine={item.sender_id === uid} />}
+              renderItem={renderItem}
             />
           )}
 
-          {/* Composer */}
-          {status === 'declined' || status === 'cancelled' ? (
+          {closed ? (
             <View style={{ paddingBottom: insets.bottom + 10 }} className="px-5 pt-3 border-t border-subtle bg-bg">
-              <Text className="text-faint-2 text-xs text-center font-display">This conversation is closed.</Text>
+              <Text className="text-faint-2 text-xs text-center font-display">
+                This trade was {status}. The conversation is closed.
+              </Text>
             </View>
           ) : (
             <View
@@ -164,7 +244,7 @@ export default function ChatScreen() {
                 <TextInput
                   value={draft}
                   onChangeText={setDraft}
-                  placeholder={canMessage ? 'Message…' : 'Waiting…'}
+                  placeholder="Message…"
                   placeholderTextColor={colors.faint2}
                   multiline
                   className="text-ink py-2.5 text-[15px] font-display"

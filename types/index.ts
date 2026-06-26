@@ -142,5 +142,29 @@ export interface Message {
   trade_id: string
   sender_id: string
   body: string
+  kind: 'text' | 'proposal'
+  proposal_id: string | null
   created_at: string
+}
+
+export type ProposalStatus = 'pending' | 'accepted' | 'declined' | 'withdrawn'
+export type ProposalSide = 'give' | 'get'
+
+export interface TradeProposal {
+  id: string
+  trade_id: string
+  proposer_id: string
+  status: ProposalStatus
+  cash_cents: number
+  created_at: string
+}
+
+export interface TradeProposalItem {
+  id: string
+  proposal_id: string
+  side: ProposalSide
+  card_id: string
+  quantity: number
+  condition: Condition
+  is_foil: boolean
 }

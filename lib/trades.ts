@@ -1,7 +1,88 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { useAuth } from './auth'
-import type { Trade, TradeStatus, Message } from '@/types'
+import type { Trade, TradeStatus, Message, TradeProposal, Condition } from '@/types'
+
+// ─────────────────────────────────────────────────────────────────────────
+// Proposals
+// ─────────────────────────────────────────────────────────────────────────
+
+export type ProposalItemInput = {
+  card_id: string
+  quantity: number
+  condition: Condition
+  is_foil: boolean
+}
+
+export type ProposalItemView = {
+  card_id: string
+  quantity: number
+  condition: string
+  is_foil: boolean
+  image_url: string | null
+  name: string | null
+}
+
+export type ProposalView = {
+  proposal: TradeProposal
+  give: ProposalItemView[]
+  get: ProposalItemView[]
+}
+
+function summarize(give: ProposalItemInput[], get: ProposalItemInput[], cashCents: number): string {
+  const g = give.reduce((n, i) => n + i.quantity, 0)
+  const r = get.reduce((n, i) => n + i.quantity, 0)
+  const cash = cashCents > 0 ? ` + $${(cashCents / 100).toFixed(0)}` : ''
+  return `Proposed: ${g}${cash} for ${r}`
+}
+
+/**
+ * Create a structured proposal inside a trade: the cards the proposer gives/gets
+ * plus optional cash. Also posts a 'proposal' message so it appears in the chat.
+ */
+export async function createProposal(
+  tradeId: string,
+  give: ProposalItemInput[],
+  get: ProposalItemInput[],
+  cashCents: number
+): Promise<string> {
+  const { data: prop, error } = await supabase
+    .from('trade_proposals')
+    .insert({ trade_id: tradeId, cash_cents: cashCents }) // proposer_id defaults to auth.uid()
+    .select('id')
+    .single()
+  if (error) throw new Error(error.message)
+
+  const items = [
+    ...give.map((i) => ({ proposal_id: prop.id, side: 'give', ...i })),
+    ...get.map((i) => ({ proposal_id: prop.id, side: 'get', ...i })),
+  ]
+  if (items.length > 0) {
+    const { error: e2 } = await supabase.from('trade_proposal_items').insert(items)
+    if (e2) throw new Error(e2.message)
+  }
+
+  const { error: e3 } = await supabase
+    .from('messages')
+    .insert({ trade_id: tradeId, kind: 'proposal', proposal_id: prop.id, body: summarize(give, get, cashCents) })
+  if (e3) throw new Error(e3.message)
+
+  return prop.id as string
+}
+
+/** Accept or decline a proposal — also flips the parent trade's status. */
+export async function respondToProposal(proposalId: string, tradeId: string, accept: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('trade_proposals')
+    .update({ status: accept ? 'accepted' : 'declined' })
+    .eq('id', proposalId)
+  if (error) throw new Error(error.message)
+  const { error: e2 } = await supabase
+    .from('trades')
+    .update({ status: accept ? 'accepted' : 'declined' })
+    .eq('id', tradeId)
+  if (e2) throw new Error(e2.message)
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Mutations
@@ -174,6 +255,7 @@ export function useTrade(tradeId: string | undefined) {
   const uid = session?.user.id
   const [trade, setTrade] = useState<Trade | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
+  const [proposalsById, setProposalsById] = useState<Record<string, ProposalView>>({})
   const [otherHandle, setOtherHandle] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -193,7 +275,43 @@ export function useTrade(tradeId: string | undefined) {
       .select('*')
       .eq('trade_id', tradeId)
       .order('created_at', { ascending: true })
-    setMessages((msgs ?? []) as Message[])
+    const messageList = (msgs ?? []) as Message[]
+    setMessages(messageList)
+
+    // Resolve any proposals referenced by proposal-kind messages.
+    const propIds = messageList.filter((m) => m.kind === 'proposal' && m.proposal_id).map((m) => m.proposal_id as string)
+    if (propIds.length > 0) {
+      const [{ data: props }, { data: pItems }] = await Promise.all([
+        supabase.from('trade_proposals').select('*').in('id', propIds),
+        supabase.from('trade_proposal_items').select('*').in('proposal_id', propIds),
+      ])
+      const cardIds = [...new Set((pItems ?? []).map((i: any) => i.card_id))]
+      const { data: cardsData } = cardIds.length
+        ? await supabase.from('cards').select('id, image_url, name').in('id', cardIds)
+        : { data: [] as any[] }
+      const cardById = new Map((cardsData ?? []).map((c: any) => [c.id, c]))
+      const map: Record<string, ProposalView> = {}
+      for (const pr of (props ?? []) as TradeProposal[]) {
+        map[pr.id] = { proposal: pr, give: [], get: [] }
+      }
+      for (const it of (pItems ?? []) as any[]) {
+        const view = map[it.proposal_id]
+        if (!view) continue
+        const card = cardById.get(it.card_id)
+        const itemView: ProposalItemView = {
+          card_id: it.card_id,
+          quantity: it.quantity,
+          condition: it.condition,
+          is_foil: it.is_foil,
+          image_url: card?.image_url ?? null,
+          name: card?.name ?? null,
+        }
+        ;(it.side === 'give' ? view.give : view.get).push(itemView)
+      }
+      setProposalsById(map)
+    } else {
+      setProposalsById({})
+    }
     setLoading(false)
   }, [tradeId, uid])
 
@@ -209,5 +327,5 @@ export function useTrade(tradeId: string | undefined) {
   }, [tradeId, load])
 
   const iAmRequester = !!trade && trade.requester_id === uid
-  return { trade, messages, otherHandle, iAmRequester, loading, refresh: load }
+  return { trade, messages, proposalsById, otherHandle, iAmRequester, loading, refresh: load }
 }

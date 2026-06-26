@@ -6,7 +6,6 @@ import { useMyProfile } from '@/lib/profile'
 import { useNearbyCards, useNearbyWantlists } from '@/lib/nearby'
 import { useMyPublicCards } from '@/lib/binders'
 import { useMyWantlist } from '@/lib/wantlist'
-import { proposeTrade } from '@/lib/trades'
 import { Avatar, Badge, MonoLabel } from '@/components/ui'
 import { CardTile, gridTileWidth } from '@/components/ui/CardTile'
 import { RadarLogo } from '@/components/ui/RadarLogo'
@@ -40,22 +39,13 @@ export default function TraderProfileScreen() {
   const youWant = theirCards.filter((c) => myWantIds.has(c.card_id)).length
 
   const recipientId = theirCards[0]?.owner_id ?? theirWants[0]?.wanter_id ?? null
-  const [proposing, setProposing] = useState(false)
 
-  async function handlePropose() {
-    if (!profile?.id || !recipientId) {
+  function handlePropose() {
+    if (!recipientId) {
       Alert.alert('Unavailable', 'Could not start a trade with this trader right now.')
       return
     }
-    try {
-      setProposing(true)
-      const tradeId = await proposeTrade(profile.id, recipientId)
-      router.push({ pathname: '/(app)/chat/[id]', params: { id: tradeId } })
-    } catch (err) {
-      Alert.alert('Error', (err as Error).message)
-    } finally {
-      setProposing(false)
-    }
+    router.push({ pathname: '/(app)/propose', params: { recipientId, recipientHandle: handle ?? '' } })
   }
 
   const data = segment === 'trade' ? theirCards : theirWants
@@ -160,12 +150,11 @@ export default function TraderProfileScreen() {
       >
         <Pressable
           onPress={handlePropose}
-          disabled={proposing}
           style={{ shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 22, shadowOffset: { width: 0, height: 0 } }}
           className="flex-1 flex-row items-center justify-center gap-2 bg-primary rounded-2xl py-4 active:opacity-90"
         >
           <Ionicons name="swap-horizontal" size={18} color={colors.primaryInk} />
-          <Text className="text-primary-ink font-display-bold text-base">{proposing ? 'Starting…' : 'Propose trade'}</Text>
+          <Text className="text-primary-ink font-display-bold text-base">Propose trade</Text>
         </Pressable>
       </View>
     </View>
