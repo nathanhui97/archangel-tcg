@@ -7,14 +7,29 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useHeaderHeight } from '@react-navigation/elements'
 import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+
+/** Current on-screen keyboard height (0 when hidden). */
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(0)
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const s = Keyboard.addListener(showEvt, (e) => setHeight(e.endCoordinates?.height ?? 0))
+    const h = Keyboard.addListener(hideEvt, () => setHeight(0))
+    return () => {
+      s.remove()
+      h.remove()
+    }
+  }, [])
+  return height
+}
 import { useAuth } from '@/lib/auth'
 import {
   useTrade,
@@ -164,7 +179,7 @@ export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const headerHeight = useHeaderHeight()
+  const kb = useKeyboardHeight()
   const { session } = useAuth()
   const uid = session?.user.id
   const { trade, messages, proposalsById, cardsById, otherHandle, otherId, iAmRequester, loading, refresh } = useTrade(id)
@@ -252,11 +267,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-bg"
-      behavior="padding"
-      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
-    >
+    <View className="flex-1 bg-bg" style={{ paddingBottom: kb }}>
       <Stack.Screen
         options={{
           headerShown: true,
@@ -297,14 +308,14 @@ export default function ChatScreen() {
           )}
 
           {closed ? (
-            <View style={{ paddingBottom: insets.bottom + 10 }} className="px-5 pt-3 border-t border-subtle bg-bg">
+            <View style={{ paddingBottom: kb > 0 ? 10 : insets.bottom + 10 }} className="px-5 pt-3 border-t border-subtle bg-bg">
               <Text className="text-faint-2 text-xs text-center font-display">
                 This trade was {status}. The conversation is closed.
               </Text>
             </View>
           ) : (
             <View
-              style={{ paddingBottom: insets.bottom + 8 }}
+              style={{ paddingBottom: kb > 0 ? 8 : insets.bottom + 8 }}
               className="flex-row items-end gap-2 px-3 pt-2 border-t border-subtle bg-bg"
             >
               <View className="flex-1 bg-surface border border-subtle rounded-2xl px-3.5 max-h-28">
@@ -329,6 +340,6 @@ export default function ChatScreen() {
           )}
         </>
       )}
-    </KeyboardAvoidingView>
+    </View>
   )
 }
