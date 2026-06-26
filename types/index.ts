@@ -124,16 +124,22 @@ export interface WantlistItem {
   card?: Card
 }
 
-export interface Conversation {
+export type TradeStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'completed'
+
+export interface Trade {
   id: string
-  user_a: string
-  user_b: string
+  requester_id: string
+  recipient_id: string
+  status: TradeStatus
+  requester_read_at: string
+  recipient_read_at: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface Message {
   id: string
-  conversation_id: string
+  trade_id: string
   sender_id: string
   body: string
   created_at: string
