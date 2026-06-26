@@ -22,27 +22,37 @@ type Props = {
   titleClassName?: string
   /** Multi-select state: green ring + check overlay, dims unselected look. */
   selected?: boolean
+  /** Quantity-select state: when > 0, green ring + a "×N" count badge (instead of a check). */
+  count?: number
   onPress?: () => void
   onLongPress?: () => void
 }
 
 /** A single card in a grid: full-size card image + overlay badges + captions. */
 export function CardTile({
-  uri, width, topRight, topLeft, title, subtitle, titleClassName = 'text-ink font-mono-bold text-xs', selected, onPress, onLongPress,
+  uri, width, topRight, topLeft, title, subtitle, titleClassName = 'text-ink font-mono-bold text-xs', selected, count, onPress, onLongPress,
 }: Props) {
   const height = width / CARD_RATIO
+  const counted = count != null && count > 0
+  const highlighted = selected || counted
   return (
     <Pressable onPress={onPress} onLongPress={onLongPress} style={{ width }} className="active:opacity-80">
       <View
         style={{ width, height }}
-        className={`rounded-lg overflow-hidden bg-surface-raised border ${selected ? 'border-2 border-primary' : 'border-subtle'}`}
+        className={`rounded-lg overflow-hidden bg-surface-raised border ${highlighted ? 'border-2 border-primary' : 'border-subtle'}`}
       >
         {uri ? (
           <Image source={{ uri }} resizeMode="cover" className="w-full h-full" />
         ) : null}
         {topRight ? <View className="absolute top-1 right-1 flex-row items-center gap-1">{topRight}</View> : null}
         {topLeft ? <View className="absolute top-1 left-1">{topLeft}</View> : null}
-        {selected ? (
+        {counted ? (
+          <View className="absolute inset-0 bg-primary/20 items-center justify-center">
+            <View className="min-w-7 h-7 px-2 rounded-full bg-primary items-center justify-center">
+              <Text className="text-primary-ink font-mono-bold text-sm">×{count}</Text>
+            </View>
+          </View>
+        ) : selected ? (
           <View className="absolute inset-0 bg-primary/20 items-center justify-center">
             <View className="w-7 h-7 rounded-full bg-primary items-center justify-center">
               <Ionicons name="checkmark" size={18} color={colors.primaryInk} />

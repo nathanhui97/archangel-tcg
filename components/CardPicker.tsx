@@ -24,11 +24,13 @@ type Props = {
   addNoun?: string
   /** Cards already in the target — shown as "ON LIST" and not selectable. */
   addedIds?: Set<string>
+  /** Allow adding multiple copies of the same card (tap = +1, long-press = −1). */
+  allowMultiple?: boolean
   onAdd: (cardIds: string[]) => Promise<void>
 }
 
 /** Full-catalog multi-select card picker (Pokémon-Pocket-style "Add to …"). */
-export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, onAdd }: Props) {
+export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, allowMultiple, onAdd }: Props) {
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const tileW = gridTileWidth(width)
@@ -37,7 +39,7 @@ export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, 
   const [game, setGame] = useState<string | null>('gundam')
   const [filters, setFilters] = useState<CardFilters>({ setCode: null, color: null, cardType: null })
   const [filterOpen, setFilterOpen] = useState(false)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [counts, setCounts] = useState<Map<string, number>>(new Map())
   const [facets, setFacets] = useState<{ sets: { code: string; name: string }[]; colors: string[]; cardTypes: string[] }>({
     sets: [], colors: [], cardTypes: [],
   })
@@ -69,27 +71,42 @@ export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, 
 
   const activeFilters = [filters.setCode, filters.color, filters.cardType].filter(Boolean).length
 
-  function toggle(cardId: string) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(cardId)) next.delete(cardId)
-      else next.add(cardId)
+  function tapCard(cardId: string) {
+    setCounts((prev) => {
+      const next = new Map(prev)
+      if (allowMultiple) next.set(cardId, (next.get(cardId) ?? 0) + 1)
+      else if (next.has(cardId)) next.delete(cardId)
+      else next.set(cardId, 1)
+      return next
+    })
+  }
+
+  function decrementCard(cardId: string) {
+    setCounts((prev) => {
+      const next = new Map(prev)
+      const v = (next.get(cardId) ?? 0) - 1
+      if (v <= 0) next.delete(cardId)
+      else next.set(cardId, v)
       return next
     })
   }
 
   async function handleAdd() {
-    if (selected.size === 0) return
+    if (counts.size === 0) return
     setSaving(true)
     try {
-      await onAdd(Array.from(selected))
-      setSelected(new Set())
+      // Repeat each id by its count so each copy becomes its own entry.
+      const ids: string[] = []
+      for (const [id, n] of counts) for (let i = 0; i < n; i++) ids.push(id)
+      await onAdd(ids)
+      setCounts(new Map())
     } finally {
       setSaving(false)
     }
   }
 
-  const count = selected.size
+  let count = 0
+  for (const n of counts.values()) count += n
 
   const header = useMemo(
     () => (
@@ -104,6 +121,12 @@ export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, 
             </View>
           )}
         </View>
+
+        {allowMultiple && (
+          <Text className="text-faint text-xs px-5 pt-1.5 font-display">
+            Tap to add a copy · long-press to remove one
+          </Text>
+        )}
 
         {/* Search */}
         <View className="px-5 pt-3">
@@ -139,7 +162,7 @@ export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, 
         </View>
       </View>
     ),
-    [title, count, query, game, activeFilters]
+    [title, count, query, game, activeFilters, allowMultiple]
   )
 
   return (
@@ -162,13 +185,15 @@ export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, 
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
             const isAdded = addedIds?.has(item.id) ?? false
+            const itemCount = counts.get(item.id) ?? 0
             return (
               <CardTile
                 width={tileW}
                 uri={item.image_url}
                 title={item.id}
                 subtitle={item.name}
-                selected={selected.has(item.id)}
+                selected={!allowMultiple && itemCount > 0}
+                count={allowMultiple ? itemCount : undefined}
                 topRight={
                   isAdded ? (
                     <View className="bg-surface-control rounded px-1.5 py-0.5">
@@ -176,7 +201,8 @@ export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, 
                     </View>
                   ) : undefined
                 }
-                onPress={isAdded ? undefined : () => toggle(item.id)}
+                onPress={isAdded ? undefined : () => tapCard(item.id)}
+                onLongPress={allowMultiple && !isAdded ? () => decrementCard(item.id) : undefined}
               />
             )
           }}

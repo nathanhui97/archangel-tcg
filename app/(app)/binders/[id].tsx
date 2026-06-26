@@ -176,10 +176,12 @@ export default function BinderDetailScreen() {
         <CardPicker
           title={`Add to ${binder.name}`}
           addNoun="binder"
+          allowMultiple
           onAdd={async (cardIds) => {
             try {
               await addCardsToBinder(binder.id, cardIds)
               refresh()
+              setAdding(false) // return to the binder so the user sees the new cards
             } catch (err) {
               Alert.alert('Could not add cards', (err as Error).message)
             }
