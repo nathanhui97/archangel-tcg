@@ -11,7 +11,9 @@
 
 You're picking up a **local trading-card game PWA-turned-native-app** that lets Gundam Card Game and One Piece Card Game players build digital binders + wantlists, match with nearby players, and arrange trades.
 
-**Current state in one sentence:** Milestones 1–5 are built; backend is provably working (26/26 smoke test passed); mobile UI couldn't be tested in the last session due to corporate-laptop SSL/dependency issues that are environmental, not code-quality.
+**Current state in one sentence (2026-06-26):** Milestones 1–6 + 8 are done and the **core trade loop is verified on-device** (request → propose → accept → chat); Milestone 7 (push) groundwork is in but only fires on a **dev build**; next step is the EAS dev build (fixes the chat keyboard via `react-native-keyboard-controller` and enables push).
+
+> Running on a **personal Windows machine now** via Expo Go — the old corporate-laptop SSL/dependency issues are behind us. `react-native-keyboard-controller` + `expo-dev-client` were added, so the **next run needs a development build**, not Expo Go (the app is guarded to still launch in Expo Go, just without the proper keyboard/push).
 
 **The four most important files in this repo** (read in order):
 1. `STATUS.md` — milestone tracker, decisions locked in
@@ -76,10 +78,21 @@ Run in order from `supabase/migrations/`:
 - `0004_add_one_piece.sql` — One Piece columns + expanded CHECKs (game, card_type)
 - `0005_binders.sql` — binders + binder_items + strict RLS
 - `0006_wantlist.sql` — wantlist_items
-- `0007_shipping_and_nearby.sql` — (added by parallel session) `willing_to_ship` on profiles + `get_nearby_cards` RPC
-- `0008_binder_type.sql` — (added by parallel session) `binder_type` column (trade vs collection)
+- `0007_shipping_and_nearby.sql` — `willing_to_ship` on profiles + `get_nearby_cards` RPC
+- `0008_binder_type.sql` — `binder_type` column (trade vs collection)
+- `0009_waitlist.sql`, `0010_waitlist_survey_fields.sql` — landing-page waitlist
+- `0011_binder_item_position.sql` — drag-reorder order column
+- `0012_allow_duplicate_binder_cards.sql` — drop unique-print index (duplicates allowed)
+- `0013_binder_cover.sql` — `binders.cover_card_id`
+- `0014_trades_messages.sql` — trades + messages (1:1 chat)
+- `0015_trade_proposals.sql` — structured proposals (give/get + cash) + `messages.kind/proposal_id`
+- `0016_trade_about_card.sql` — `trades.about_card_id` (superseded by 0017's in-chat card messages)
+- `0017_inquiry_messages.sql` — `messages.card_id` + `'inquiry'` kind
+- `0018_push_notifications.sql` — `push_tokens` + `pg_net` push triggers ⚠️ **confirm applied**
 
-Re-running any is safe (all idempotent).
+Re-running any is safe (idempotent), EXCEPT data-backfill steps already guarded.
+**Migrations are applied by hand in the Supabase SQL editor** (no CLI link). Tip: copy from the
+file, not chat, to avoid paste corruption.
 
 ---
 

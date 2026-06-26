@@ -104,9 +104,9 @@ Matches are **computed by query, never stored.**
 | # | Milestone | Status | Notes |
 |---|---|---|---|
 | 1 | App skeleton | ✅ Done | Expo + NativeWind + Supabase client. Pushed to GitHub. |
-| 2 | Auth + profile | ⏳ Active | Email OTP auth (6-digit code), profile (handle + rounded location). RLS on `profiles`. SecureStore for tokens. |
-| 3 | Card catalog + search | ✅ Code + scrapers done | Cheerio scrapers for Gundam + One Piece. Cards table + RLS. Storage bucket. Search component + hook + Browse screen. `--new-only` flag for incremental sync when new sets drop. Multi-game schema (migration 0004). |
-| 4 | Binders | ✅ Done | Multiple named binders, public/private toggle. Add cards via search. Quantity/condition/foil per item. Duplicate adds bump quantity. RLS: own fully, others read-only when public. Long-press to delete. |
+| 2 | Auth + profile | ✅ Done | Email OTP auth (6-digit code), profile (handle + rounded location). RLS on `profiles`. SecureStore for tokens. |
+| 3 | Card catalog + search | ✅ Done | Cheerio scrapers for Gundam + One Piece. Cards table + RLS. Storage bucket. Search component + hook. `--new-only` incremental sync. Multi-game schema (migration 0004). |
+| 4 | Binders | ✅ Done + overhauled (2026-06-26) | Named binders, public/private. **Cover card** (pick any; migration 0013) + name header. Add cards with **per-card quantity**. **Duplicates allowed** as separate entries (migration 0012). **Drag-to-reorder** (migration 0011, custom reanimated) + iPhone-style **edit mode** (hold to jiggle, ✕ to delete). Themed confirm dialogs. Binders tab = horizontal rows with **rarity breakdown**. |
 | 5 | Wantlist | ✅ Done | Tap-to-add from search with instant toast feedback. Long-press to remove. RLS: all authenticated can read (powers matching), own-only writes. **Reminder: set up Apple Dev + Google Play accounts soon** |
 
 ## Backend verification (2026-06-24)
@@ -114,10 +114,23 @@ Matches are **computed by query, never stored.**
 **Smoke test passed 26/26.** Every CRUD path, every RLS rule, the matching query, and the cross-user leak prevention all verified end-to-end via `scripts/smoke-test.ts`. The backend is provably solid.
 
 Mobile UI testing was not possible on the current work laptop due to corporate SSL inspection causing `--force` installs which produced a slightly inconsistent `node_modules` tree. The app code itself compiles cleanly (`npx tsc --noEmit` passes); the issue is purely runtime-environmental. When tested from a clean machine (personal Mac or after IT installs the corporate CA cert via `NODE_EXTRA_CA_CERTS`), the app should run as expected.
-| 6 | Matching screen | 🟡 UI done (2026-06-25) | Matching computed **client-side** (`lib/matches.ts`): your wantlist ∩ nearby public `binder_items`, plus nearby wants ∩ your public binders → strength score + distance sort. `matches.tsx` screen + Trade-tab entry. Nearby distance via `get_nearby_cards` RPC (migration 0007). **Not yet visually verified on device.** Use `scripts/seed-fake-traders.ts` to populate test traders. |
-| 7 | Push notifications | — | expo-notifications. Supabase trigger on insert of public `binder_item` → check for nearby wantlist matches → push. **TestFlight + Internal Testing builds by now.** |
-| 8 | Messaging | — | Supabase Realtime 1:1 chat. Suggest local game shop as meetup. |
-| 9 | Polish + launch | 🟡 Partial | **Theme + re-skin done early** (2026-06-25): phosphor-green design system applied to all built screens. Still to do: real app icon/splash (radar mark is ready as `RadarLogo`), App Store + Play Store submission, onboard first 20–50 players. |
+| 6 | Matching screen | ✅ Done (verified 2026-06-26) | Client-side matching (`lib/matches.ts`): your wantlist ∩ nearby public `binder_items` + nearby wants ∩ your public binders → strength + distance sort. `matches.tsx` + Trade-tab entry. |
+| 7 | Push notifications | 🟡 Groundwork done (2026-06-26) | `push_tokens` table + `send_push()` + Postgres triggers POST to Expo via `pg_net` (migration 0018): new message/proposal/inquiry → other party; proposal accept/decline → proposer. App registers token on login (`lib/push.ts`). **Fires only on a dev/prod build, not Expo Go.** Nearby-match radar push still TODO. |
+| 8 | Messaging + trades | ✅ Done (verified 2026-06-26) | Inquire-first flow + 1:1 chat (polled, 4s). **Structured proposals** (give/get cards + cash, migration 0015) shown as proposal cards with Accept/Decline. **Card-context requests** as in-chat card messages, 3-per-card cap (migration 0017). Messages tab + inbox. Full loop (request → propose → accept → reply) verified via `scripts/fake-trader-reply.ts`. Tables: trades/messages (0014). |
+| 9 | Polish + launch | 🟡 Partial | Phosphor-green design system applied to all screens. **Dev build path set up** (keyboard-controller + `eas.json` + `expo-dev-client`) — needed for keyboard + push. Still to do: real app icon/splash, store submission, onboard first players. |
+
+## Session log — 2026-06-26
+
+Big day. Verified the app runs on device (Android, Expo Go) and shipped the trade loop end-to-end.
+
+- **Binders overhaul** — drag-to-reorder, iPhone-style edit/jiggle delete, duplicates as separate entries, per-card quantity on add, pick-a-cover + name header, themed confirm/rename dialogs, Binders tab as horizontal rows with rarity breakdown.
+- **Trades & messaging (M8)** — inquire-first flow, 1:1 chat (polled), structured proposals (give/get + cash) as proposal cards with Accept/Decline, card-context requests as in-chat card bubbles (3-per-card cap), Messages tab + inbox. **Full loop verified** with `scripts/fake-trader-reply.ts`.
+- **Push groundwork (M7)** — `push_tokens` + `pg_net` triggers + token registration (fires on dev build only).
+- **Keyboard** — moved to `react-native-keyboard-controller` (guarded so Expo Go still runs); proper fix activates on the dev build.
+
+**Migrations now go to 0018** — all applied to Supabase this session (0011 reorder, 0012 dup, 0013 cover, 0014 trades, 0015 proposals, 0016 about-card [superseded by 0017], 0017 inquiry msgs, 0018 push). **0018 still pending apply at session end — confirm it's run.**
+
+**Next:** do the **EAS dev build** (`eas build --profile development --platform android`) → fixes keyboard + enables push. Then build the nearby-match radar push + onboarding nudge. Apple Dev + Google Play accounts still not set up.
 
 ## Design system (2026-06-25)
 
@@ -140,32 +153,33 @@ New deps: `@expo-google-fonts/space-grotesk`, `@expo-google-fonts/jetbrains-mono
 ## Screen map (current)
 
 ### Navigation structure
-Bottom tab bar (**3 tabs**, reworked 2026-06-25) → stack screens push on top.
-> Old `Browse` + `Wanted` tabs were merged into the single `Trade` tab.
+Bottom tab bar (**4 tabs**, Messages added 2026-06-26) → stack screens push on top.
+> Old `Browse` + `Wanted` tabs were merged into the single `Trade` tab (2026-06-25).
 
 | Tab | File | What it shows |
 |---|---|---|
-| Trade | `(tabs)/trade.tsx` | Segmented **Listed for Trade** / **Wishlist** of nearby cards. Game + radius filters, search. Surfaces a "N matches near you" entry → Matches screen. |
-| Binders | `(tabs)/my-cards.tsx` | My trade binders, collections, and wantlist. Entry point to manage everything. |
+| Trade | `(tabs)/trade.tsx` | Segmented **Listed for Trade** / **Wishlist** of nearby cards. Game + radius filters, search. Surfaces a "N matches near you" entry → Matches. |
+| Binders | `(tabs)/my-cards.tsx` | "For trade" strip, Wantlist, and **Your Binders** (horizontal rows w/ cover + rarity). |
+| Messages | `(tabs)/messages.tsx` | Trade inbox: requests + chats, unread dots; badge for pending requests. |
 | Profile | `(tabs)/profile.tsx` | Handle, location status, willing-to-ship toggle, sign out. |
 
 ### Stack screens (pushed on top of tabs)
 | Screen | File | Notes |
 |---|---|---|
-| New binder | `binders/new.tsx` | Accepts `?type=trade\|collection` param. Defaults public for trade, private for collection. |
-| Binder detail | `binders/[id].tsx` | View + manage cards in a binder. |
-| Wantlist | `wantlist/index.tsx` | Full wantlist management. |
-| Add to wantlist | `wantlist/add.tsx` | Card search → add to wantlist. |
+| New binder | `binders/new.tsx` | `?type=trade\|collection`. Defaults public for trade, private for collection. |
+| Binder detail | `binders/[id].tsx` | Cover + name header; 3×3 grid; add (qty), reorder, edit-mode delete, ••• menu. |
+| Wantlist / Add | `wantlist/index.tsx`, `wantlist/add.tsx` | Full wantlist mgmt + card search add. |
 | Profile setup | `profile-setup.tsx` | Onboarding: handle + location. Shown once on first login. |
-| Matches | `matches.tsx` | Nearby traders you overlap with (you-get / you-give + strength). → Propose trade. |
-| Card detail | `card/[id].tsx` | Single card view. |
-| Trader profile | `trader/[handle].tsx` | A trader's public binder + wants; entry to propose a trade. |
-| For trade | `trades.tsx` | Grid of my own public cards (what others see). |
-| Invite | `invite.tsx` | Invite/share entry. |
+| Matches | `matches.tsx` | Nearby traders you overlap with (you-get / you-give + strength). |
+| Card detail | `card/[id].tsx` | Card + "available near you" holders, each with a **Request** button. |
+| Trader profile | `trader/[handle].tsx` | A trader's public cards + wants; **Inquire** to open a chat. |
+| Propose | `propose.tsx` | Build a give/get (+ cash) proposal for a trade. |
+| Chat | `chat/[id].tsx` | 1:1 thread: text + inquiry-card + proposal-card bubbles; Propose; Accept/Decline. |
+| For trade / Invite | `trades.tsx`, `invite.tsx` | My public cards grid · invite/share. |
 
 ### Pending screens (not built yet)
-- **Messaging** — 1:1 chat (Milestone 8)
-- **Onboarding trade binder prompt** — guide new users to create their first trade binder after profile setup
+- **Onboarding trade binder prompt** — nudge new users to create their first trade binder after profile setup
+- **Nearby-match radar push** — the proactive "someone near you wants your card" notification (M7 follow-up)
 
 ---
 
