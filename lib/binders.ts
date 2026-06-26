@@ -199,32 +199,11 @@ type AddCardInput = {
 }
 
 /**
- * Add a card to a binder. If the same card+condition+foil combo already
- * exists in this binder, we bump the quantity instead of inserting a duplicate.
+ * Add a card to a binder. Duplicates are allowed — every add creates its own
+ * entry (its own tile), even if the same card/condition/foil is already present.
  */
 export async function addCardToBinder(input: AddCardInput): Promise<void> {
   const { binderId, cardId, quantity, condition, isFoil } = input
-
-  // Look for an existing matching row
-  const { data: existing, error: lookupError } = await supabase
-    .from('binder_items')
-    .select('id, quantity')
-    .eq('binder_id', binderId)
-    .eq('card_id', cardId)
-    .eq('condition', condition)
-    .eq('is_foil', isFoil)
-    .maybeSingle()
-
-  if (lookupError) throw new Error(lookupError.message)
-
-  if (existing) {
-    const { error } = await supabase
-      .from('binder_items')
-      .update({ quantity: existing.quantity + quantity })
-      .eq('id', existing.id)
-    if (error) throw new Error(error.message)
-    return
-  }
 
   // New cards go to the end of the binder's manual order.
   const { data: last } = await supabase
@@ -259,8 +238,8 @@ export async function addCardsToBinder(
   const condition = opts.condition ?? 'NM'
   const isFoil = opts.isFoil ?? false
   const quantity = opts.quantity ?? 1
-  // Sequential: each add reads-then-writes to bump duplicates, so we avoid
-  // racing two writes against the same card row.
+  // Sequential: each add reads the current max position before inserting, so
+  // running them in order keeps positions monotonic (no two rows share a slot).
   for (const cardId of cardIds) {
     await addCardToBinder({ binderId, cardId, quantity, condition, isFoil })
   }

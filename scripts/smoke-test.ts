@@ -272,7 +272,7 @@ async function run() {
       if (error) throw error
     })
 
-    await test('Duplicate (same card+condition+foil) blocked by unique index', async () => {
+    await test('Duplicate (same card+condition+foil) is allowed (separate entry)', async () => {
       const { error } = await A.client.from('binder_items').insert({
         binder_id: alicePublicBinderId,
         card_id: sampleCardId,
@@ -280,7 +280,7 @@ async function run() {
         condition: 'NM',
         is_foil: false,
       })
-      if (!error) throw new Error('duplicate insert succeeded')
+      if (error) throw new Error(`duplicate insert blocked: ${error.message}`)
     })
 
     await test('Different condition is allowed (same card, different print)', async () => {
