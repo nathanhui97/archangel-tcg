@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { View, Text, Pressable, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native'
+import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Link, useFocusEffect, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -8,15 +8,11 @@ import { useMyWantlist } from '@/lib/wantlist'
 import { MonoLabel, PressRow } from '@/components/ui'
 import { ScreenHeader } from '@/components/ui/ScreenHeader'
 import { CardTile } from '@/components/ui/CardTile'
-import { BinderCoverTile, NewBinderTile } from '@/components/BinderCoverTile'
+import { BinderRow, NewBinderRow } from '@/components/BinderCoverTile'
 import { colors } from '@/lib/theme'
-
-const GRID_GAP = 12
 
 export default function MyCardsScreen() {
   const router = useRouter()
-  const { width } = useWindowDimensions()
-  const tileW = (width - 40 - GRID_GAP) / 2 // 20px screen padding each side
 
   const { binders, loading: bindersLoading, refresh: refreshBinders } = useMyBinders()
   const { items: wantlistItems, loading: wantlistLoading, refresh: refreshWantlist } = useMyWantlist()
@@ -117,19 +113,19 @@ export default function MyCardsScreen() {
         {bindersLoading ? (
           <ActivityIndicator color={colors.primary} />
         ) : (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }}>
+          <View className="gap-2.5">
             {binders.map((b) => (
-              <BinderCoverTile
+              <BinderRow
                 key={b.id}
-                width={tileW}
                 name={b.name}
                 itemCount={b.item_count}
                 isPublic={b.is_public}
                 coverUrl={b.cover_url}
+                rarities={b.rarities}
                 onPress={() => router.push(`/(app)/binders/${b.id}`)}
               />
             ))}
-            <NewBinderTile width={tileW} label="New binder" onPress={() => router.push('/(app)/binders/new')} />
+            <NewBinderRow label="New binder" onPress={() => router.push('/(app)/binders/new')} />
           </View>
         )}
       </ScrollView>

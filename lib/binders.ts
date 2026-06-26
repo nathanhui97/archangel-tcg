@@ -7,7 +7,29 @@ import type { Binder, BinderItem, BinderType, Card, Condition } from '@/types'
 // Binders list (the current user's binders)
 // ─────────────────────────────────────────────────────────────────────────
 
-type BinderWithCount = Binder & { item_count: number; cover_url: string | null }
+export type RarityCount = { rarity: string; count: number }
+
+type BinderWithCount = Binder & {
+  item_count: number
+  cover_url: string | null
+  rarities: RarityCount[]
+}
+
+// Scraped rarities carry padding whitespace ("C        +"); normalise to "C+",
+// and shorten One Piece's "SP CARD" to "SP".
+function normRarity(raw: string): string {
+  const n = raw.replace(/\s+/g, ' ').trim().replace(/\s*\+/g, '+')
+  return n === 'SP CARD' ? 'SP' : n
+}
+
+// Rarest first, so a binder's headline cards lead the breakdown.
+const RARITY_RANK: Record<string, number> = {
+  SEC: 1, SP: 2, 'LR++': 3, 'LR+': 4, LR: 5, L: 6, SR: 7,
+  'R+': 8, R: 9, 'U+': 10, UC: 11, U: 12, 'C++': 13, 'C+': 14, C: 15, P: 16,
+}
+function rarityRank(r: string): number {
+  return RARITY_RANK[r] ?? 99
+}
 
 export function useMyBinders() {
   const { session } = useAuth()
@@ -32,37 +54,40 @@ export function useMyBinders() {
       return
     }
 
-    const counts = await Promise.all(
+    const enriched = await Promise.all(
       (rows ?? []).map(async (b) => {
-        const [{ count }, firstRes] = await Promise.all([
-          supabase
-            .from('binder_items')
-            .select('id', { count: 'exact', head: true })
-            .eq('binder_id', b.id),
-          // Fallback cover = first card in the binder's order.
-          supabase
-            .from('binder_items')
-            .select('card:cards(image_url)')
-            .eq('binder_id', b.id)
-            .order('position', { ascending: true })
-            .order('created_at', { ascending: true })
-            .limit(1),
-        ])
-        let cover_url = (firstRes.data?.[0] as any)?.card?.image_url ?? null
-        // A chosen cover card overrides the fallback (it may not be the first card).
+        const { data: its } = await supabase
+          .from('binder_items')
+          .select('card_id, card:cards(rarity, image_url)')
+          .eq('binder_id', b.id)
+          .order('position', { ascending: true })
+          .order('created_at', { ascending: true })
+        const items = (its ?? []) as any[]
+
+        // Cover = chosen card's art (if still in the binder), else first card.
+        let cover_url = items[0]?.card?.image_url ?? null
         if (b.cover_card_id) {
-          const { data: cc } = await supabase
-            .from('cards')
-            .select('image_url')
-            .eq('id', b.cover_card_id)
-            .maybeSingle()
-          if (cc?.image_url) cover_url = cc.image_url
+          const hit = items.find((it) => it.card_id === b.cover_card_id)
+          cover_url = hit?.card?.image_url ?? cover_url
         }
-        return { ...(b as Binder), item_count: count ?? 0, cover_url }
+
+        // Rarity breakdown (rarest first).
+        const rmap = new Map<string, number>()
+        for (const it of items) {
+          const raw = it.card?.rarity as string | null
+          if (!raw) continue
+          const r = normRarity(raw)
+          rmap.set(r, (rmap.get(r) ?? 0) + 1)
+        }
+        const rarities = Array.from(rmap.entries())
+          .map(([rarity, count]) => ({ rarity, count }))
+          .sort((a, b2) => rarityRank(a.rarity) - rarityRank(b2.rarity) || b2.count - a.count)
+
+        return { ...(b as Binder), item_count: items.length, cover_url, rarities }
       })
     )
 
-    setBinders(counts)
+    setBinders(enriched)
     setLoading(false)
   }, [session])
 
