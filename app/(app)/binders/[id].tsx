@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -72,6 +72,7 @@ export default function BinderDetailScreen() {
   const { binder, items, loading, error, refresh } = useBinder(id)
   const [adding, setAdding] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const isOwner = !!binder && !!session && binder.user_id === session.user.id
 
@@ -79,23 +80,18 @@ export default function BinderDetailScreen() {
   const tileW = gridTileWidth(width)
   const tileH = tileW / CARD_RATIO
 
-  function confirmRemove(item: BinderItem) {
-    const name = item.card?.name ?? 'this card'
-    Alert.alert(`Remove ${name}?`, undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await removeBinderItem(item.id)
-            refresh()
-          } catch (err) {
-            Alert.alert('Error', (err as Error).message)
-          }
-        },
-      },
-    ])
+  // Leave edit mode automatically once the binder is empty.
+  useEffect(() => {
+    if (items.length === 0 && editing) setEditing(false)
+  }, [items.length, editing])
+
+  async function handleDeleteItem(item: BinderItem) {
+    try {
+      await removeBinderItem(item.id)
+      refresh()
+    } catch (err) {
+      Alert.alert('Error', (err as Error).message)
+    }
   }
 
   async function handleReorder(orderedIds: string[]) {
@@ -198,18 +194,21 @@ export default function BinderDetailScreen() {
           headerShown: true,
           title: '',
           headerRight: isOwner
-            ? () => (
-                <View className="flex-row items-center gap-2">
-                  <HeaderButton label="Add" icon onPress={() => setAdding(true)} />
-                  <Pressable
-                    onPress={() => setMenuOpen(true)}
-                    hitSlop={8}
-                    className="w-8 h-8 items-center justify-center active:opacity-60"
-                  >
-                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.ink} />
-                  </Pressable>
-                </View>
-              )
+            ? () =>
+                editing ? (
+                  <HeaderButton label="Done" onPress={() => setEditing(false)} />
+                ) : (
+                  <View className="flex-row items-center gap-2">
+                    <HeaderButton label="Add" icon onPress={() => setAdding(true)} />
+                    <Pressable
+                      onPress={() => setMenuOpen(true)}
+                      hitSlop={8}
+                      className="w-8 h-8 items-center justify-center active:opacity-60"
+                    >
+                      <Ionicons name="ellipsis-horizontal" size={20} color={colors.ink} />
+                    </Pressable>
+                  </View>
+                )
             : undefined,
         }}
       />
@@ -263,8 +262,10 @@ export default function BinderDetailScreen() {
               items={items}
               tileWidth={tileW}
               tileHeight={tileH}
+              editing={editing}
               onReorder={handleReorder}
-              onTapItem={(item) => confirmRemove(item)}
+              onRequestEdit={() => setEditing(true)}
+              onDeleteItem={handleDeleteItem}
               renderItem={(item) => <CardFace item={item} width={tileW} height={tileH} />}
             />
           ) : (
@@ -284,7 +285,9 @@ export default function BinderDetailScreen() {
           {isOwner && (
             <View className="flex-row items-center justify-center gap-1.5 pt-4">
               <Ionicons name="information-circle-outline" size={13} color={colors.faint} />
-              <Text className="text-faint text-xs font-display">Tap to remove · long-press to reorder</Text>
+              <Text className="text-faint text-xs font-display">
+                {editing ? 'Drag to reorder · tap ✕ to delete · Done when finished' : 'Hold a card to rearrange or delete'}
+              </Text>
             </View>
           )}
         </ScrollView>

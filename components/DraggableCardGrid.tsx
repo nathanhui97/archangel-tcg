@@ -1,16 +1,22 @@
 import { ReactNode, useEffect } from 'react'
 import { View } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   useAnimatedReaction,
   withSpring,
+  withRepeat,
+  withTiming,
+  cancelAnimation,
   runOnJS,
   type SharedValue,
 } from 'react-native-reanimated'
+import { colors } from '@/lib/theme'
 
 const SPRING = { damping: 18, stiffness: 220, mass: 0.6 }
+const BADGE_HIT = 34 // top-left square (px) that counts as a tap on the delete badge
 
 /** Pixel slot (top-left) for an item at a given index in an N-column grid. */
 function slotXY(index: number, columns: number, tileW: number, tileH: number, gap: number) {
@@ -52,24 +58,43 @@ type TileProps = {
   tileWidth: number
   tileHeight: number
   gap: number
+  editing: boolean
   onReorder: (orderedIds: string[]) => void
-  onTap?: () => void
+  onRequestEdit?: () => void
+  onDelete?: () => void
   children: ReactNode
 }
 
 function MovableTile({
-  id, indexFallback, ids, positions, count, columns, tileWidth, tileHeight, gap, onReorder, onTap, children,
+  id, indexFallback, ids, positions, count, columns, tileWidth, tileHeight, gap,
+  editing, onReorder, onRequestEdit, onDelete, children,
 }: TileProps) {
   const startX = useSharedValue(0)
   const startY = useSharedValue(0)
   const isActive = useSharedValue(false)
+  const wiggle = useSharedValue(0)
 
   const home = slotXY(positions.value[id] ?? indexFallback, columns, tileWidth, tileHeight, gap)
   const tx = useSharedValue(home.x)
   const ty = useSharedValue(home.y)
 
-  // When this tile's slot changes (because another tile was dragged past it),
-  // glide to the new slot — unless this tile is the one being dragged.
+  // iPhone-style jiggle while in edit mode, desynced per tile so they don't move in lockstep.
+  useEffect(() => {
+    if (editing) {
+      const dir = indexFallback % 2 === 0 ? 1 : -1
+      const amp = 1.4
+      wiggle.value = dir * amp
+      wiggle.value = withRepeat(
+        withTiming(-dir * amp, { duration: 130 + (indexFallback % 4) * 18 }),
+        -1,
+        true
+      )
+    } else {
+      cancelAnimation(wiggle)
+      wiggle.value = withTiming(0, { duration: 90 })
+    }
+  }, [editing, indexFallback, wiggle])
+
   useAnimatedReaction(
     () => positions.value[id],
     (now, prev) => {
@@ -81,8 +106,11 @@ function MovableTile({
     }
   )
 
+  // Drag-to-reorder. In edit mode it picks up on a short movement; otherwise it
+  // needs a long press first (so a stray touch doesn't drag).
   const pan = Gesture.Pan()
-    .activateAfterLongPress(220)
+    .enabled(editing)
+    .minDistance(8)
     .onStart(() => {
       const p = slotXY(positions.value[id], columns, tileWidth, tileHeight, gap)
       startX.value = p.x
@@ -121,13 +149,23 @@ function MovableTile({
       runOnJS(onReorder)(order)
     })
 
-  const tap = Gesture.Tap()
+  // In edit mode, a tap on the top-left badge deletes; elsewhere does nothing.
+  const tapDelete = Gesture.Tap()
+    .enabled(editing)
     .maxDuration(250)
-    .onEnd(() => {
-      if (onTap) runOnJS(onTap)()
+    .onEnd((e) => {
+      if (onDelete && e.x <= BADGE_HIT && e.y <= BADGE_HIT) runOnJS(onDelete)()
     })
 
-  const gesture = Gesture.Exclusive(pan, tap)
+  // Out of edit mode, a long press enters edit mode (the iPhone "hold to jiggle").
+  const longPress = Gesture.LongPress()
+    .enabled(!editing)
+    .minDuration(220)
+    .onStart(() => {
+      if (onRequestEdit) runOnJS(onRequestEdit)()
+    })
+
+  const gesture = Gesture.Exclusive(pan, tapDelete, longPress)
 
   const style = useAnimatedStyle(() => ({
     position: 'absolute',
@@ -138,6 +176,7 @@ function MovableTile({
     transform: [
       { translateX: tx.value },
       { translateY: ty.value },
+      { rotateZ: `${wiggle.value}deg` },
       { scale: withSpring(isActive.value ? 1.06 : 1, SPRING) },
     ],
     shadowColor: '#35F58A',
@@ -148,7 +187,18 @@ function MovableTile({
 
   return (
     <GestureDetector gesture={gesture}>
-      <Animated.View style={style}>{children}</Animated.View>
+      <Animated.View style={style}>
+        {children}
+        {editing && onDelete ? (
+          <View
+            pointerEvents="none"
+            className="absolute top-1 left-1 w-[22px] h-[22px] rounded-full bg-ink items-center justify-center"
+            style={{ shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }}
+          >
+            <Ionicons name="close" size={15} color={colors.bg} />
+          </View>
+        ) : null}
+      </Animated.View>
     </GestureDetector>
   )
 }
@@ -160,22 +210,26 @@ type Props<T extends { id: string }> = {
   tileHeight: number
   /** Persist the new order. Receives all item ids in their new order. */
   onReorder: (orderedIds: string[]) => void
-  onTapItem?: (item: T) => void
+  /** Edit (jiggle) mode: tiles wiggle, show a delete badge, and drag immediately. */
+  editing?: boolean
+  /** Called when a long-press should enter edit mode. */
+  onRequestEdit?: () => void
+  /** Called when the delete badge on an item is tapped. */
+  onDeleteItem?: (item: T) => void
   columns?: number
   gap?: number
 }
 
 /**
- * A grid of cards that the user can long-press and drag to reorder. Built on
- * react-native-gesture-handler + reanimated (already in the app) — no new deps.
- * Tiles are absolutely positioned; dragging one shuffles the rest in real time
- * and `onReorder` fires once on drop.
+ * A grid of cards. Long-press enters iPhone-style edit mode: tiles jiggle and
+ * show a delete badge; in edit mode you drag to reorder and tap the badge to
+ * delete. Built on gesture-handler + reanimated — no new deps.
  *
  * Note: no auto-scroll while dragging — drag within the visible area, scroll, then
  * drag again to move a card a long way. Fine for typical binder sizes.
  */
 export function DraggableCardGrid<T extends { id: string }>({
-  items, renderItem, tileWidth, tileHeight, onReorder, onTapItem, columns = 3, gap = 10,
+  items, renderItem, tileWidth, tileHeight, onReorder, editing = false, onRequestEdit, onDeleteItem, columns = 3, gap = 10,
 }: Props<T>) {
   const ids = items.map((i) => i.id)
   const positions = useSharedValue<Record<string, number>>(buildPositions(ids))
@@ -202,8 +256,10 @@ export function DraggableCardGrid<T extends { id: string }>({
           tileWidth={tileWidth}
           tileHeight={tileHeight}
           gap={gap}
+          editing={editing}
           onReorder={onReorder}
-          onTap={onTapItem ? () => onTapItem(item) : undefined}
+          onRequestEdit={onRequestEdit}
+          onDelete={onDeleteItem ? () => onDeleteItem(item) : undefined}
         >
           {renderItem(item)}
         </MovableTile>
