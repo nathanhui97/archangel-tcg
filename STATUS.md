@@ -114,7 +114,7 @@ Matches are **computed by query, never stored.**
 **Smoke test passed 26/26.** Every CRUD path, every RLS rule, the matching query, and the cross-user leak prevention all verified end-to-end via `scripts/smoke-test.ts`. The backend is provably solid.
 
 Mobile UI testing was not possible on the current work laptop due to corporate SSL inspection causing `--force` installs which produced a slightly inconsistent `node_modules` tree. The app code itself compiles cleanly (`npx tsc --noEmit` passes); the issue is purely runtime-environmental. When tested from a clean machine (personal Mac or after IT installs the corporate CA cert via `NODE_EXTRA_CA_CERTS`), the app should run as expected.
-| 6 | Matching screen | — | Query: wantlist ↔ public `binder_items`, same game, within 25 km. Server-side distance via PostGIS or `earth_distance`. |
+| 6 | Matching screen | 🟡 UI done (2026-06-25) | Matching computed **client-side** (`lib/matches.ts`): your wantlist ∩ nearby public `binder_items`, plus nearby wants ∩ your public binders → strength score + distance sort. `matches.tsx` screen + Trade-tab entry. Nearby distance via `get_nearby_cards` RPC (migration 0007). **Not yet visually verified on device.** Use `scripts/seed-fake-traders.ts` to populate test traders. |
 | 7 | Push notifications | — | expo-notifications. Supabase trigger on insert of public `binder_item` → check for nearby wantlist matches → push. **TestFlight + Internal Testing builds by now.** |
 | 8 | Messaging | — | Supabase Realtime 1:1 chat. Suggest local game shop as meetup. |
 | 9 | Polish + launch | 🟡 Partial | **Theme + re-skin done early** (2026-06-25): phosphor-green design system applied to all built screens. Still to do: real app icon/splash (radar mark is ready as `RadarLogo`), App Store + Play Store submission, onboard first 20–50 players. |
@@ -140,13 +140,13 @@ New deps: `@expo-google-fonts/space-grotesk`, `@expo-google-fonts/jetbrains-mono
 ## Screen map (current)
 
 ### Navigation structure
-Bottom tab bar (4 tabs) → stack screens push on top.
+Bottom tab bar (**3 tabs**, reworked 2026-06-25) → stack screens push on top.
+> Old `Browse` + `Wanted` tabs were merged into the single `Trade` tab.
 
 | Tab | File | What it shows |
 |---|---|---|
-| Browse | `(tabs)/browse.tsx` | Cards in nearby trade binders. Game + radius chips. Card search. "Want" badge on wantlisted cards. |
-| Wanted | `(tabs)/wanted.tsx` | Wantlists from nearby users, grouped by card. Shows who wants each card + distance. |
-| My Cards | `(tabs)/my-cards.tsx` | My trade binders, collections, and wantlist. Entry point to manage everything. |
+| Trade | `(tabs)/trade.tsx` | Segmented **Listed for Trade** / **Wishlist** of nearby cards. Game + radius filters, search. Surfaces a "N matches near you" entry → Matches screen. |
+| Binders | `(tabs)/my-cards.tsx` | My trade binders, collections, and wantlist. Entry point to manage everything. |
 | Profile | `(tabs)/profile.tsx` | Handle, location status, willing-to-ship toggle, sign out. |
 
 ### Stack screens (pushed on top of tabs)
@@ -157,6 +157,11 @@ Bottom tab bar (4 tabs) → stack screens push on top.
 | Wantlist | `wantlist/index.tsx` | Full wantlist management. |
 | Add to wantlist | `wantlist/add.tsx` | Card search → add to wantlist. |
 | Profile setup | `profile-setup.tsx` | Onboarding: handle + location. Shown once on first login. |
+| Matches | `matches.tsx` | Nearby traders you overlap with (you-get / you-give + strength). → Propose trade. |
+| Card detail | `card/[id].tsx` | Single card view. |
+| Trader profile | `trader/[handle].tsx` | A trader's public binder + wants; entry to propose a trade. |
+| For trade | `trades.tsx` | Grid of my own public cards (what others see). |
+| Invite | `invite.tsx` | Invite/share entry. |
 
 ### Pending screens (not built yet)
 - **Messaging** — 1:1 chat (Milestone 8)
