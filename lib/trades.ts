@@ -70,18 +70,21 @@ export async function createProposal(
   return prop.id as string
 }
 
-/** Accept or decline a proposal — also flips the parent trade's status. */
+/**
+ * Accept or decline a proposal. Accepting marks the trade accepted (a deal was
+ * struck); declining only marks the proposal — the conversation stays open so
+ * they can keep negotiating and propose again.
+ */
 export async function respondToProposal(proposalId: string, tradeId: string, accept: boolean): Promise<void> {
   const { error } = await supabase
     .from('trade_proposals')
     .update({ status: accept ? 'accepted' : 'declined' })
     .eq('id', proposalId)
   if (error) throw new Error(error.message)
-  const { error: e2 } = await supabase
-    .from('trades')
-    .update({ status: accept ? 'accepted' : 'declined' })
-    .eq('id', tradeId)
-  if (e2) throw new Error(e2.message)
+  if (accept) {
+    const { error: e2 } = await supabase.from('trades').update({ status: 'accepted' }).eq('id', tradeId)
+    if (e2) throw new Error(e2.message)
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -257,6 +260,7 @@ export function useTrade(tradeId: string | undefined) {
   const [messages, setMessages] = useState<Message[]>([])
   const [proposalsById, setProposalsById] = useState<Record<string, ProposalView>>({})
   const [otherHandle, setOtherHandle] = useState('')
+  const [otherId, setOtherId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -267,8 +271,9 @@ export function useTrade(tradeId: string | undefined) {
       return
     }
     setTrade(t as Trade)
-    const otherId = t.requester_id === uid ? t.recipient_id : t.requester_id
-    const { data: p } = await supabase.from('profiles').select('handle').eq('id', otherId).maybeSingle()
+    const other = t.requester_id === uid ? t.recipient_id : t.requester_id
+    setOtherId(other)
+    const { data: p } = await supabase.from('profiles').select('handle').eq('id', other).maybeSingle()
     setOtherHandle(p?.handle ?? '?')
     const { data: msgs } = await supabase
       .from('messages')
@@ -327,5 +332,5 @@ export function useTrade(tradeId: string | undefined) {
   }, [tradeId, load])
 
   const iAmRequester = !!trade && trade.requester_id === uid
-  return { trade, messages, proposalsById, otherHandle, iAmRequester, loading, refresh: load }
+  return { trade, messages, proposalsById, otherHandle, otherId, iAmRequester, loading, refresh: load }
 }

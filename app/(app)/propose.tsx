@@ -66,10 +66,11 @@ export default function ProposeScreen() {
   const insets = useSafeAreaInsets()
   const { session } = useAuth()
   const myId = session?.user.id ?? null
-  const { recipientId, recipientHandle, getItemId } = useLocalSearchParams<{
+  const { recipientId, recipientHandle, getItemId, tradeId } = useLocalSearchParams<{
     recipientId: string
     recipientHandle?: string
     getItemId?: string
+    tradeId?: string
   }>()
 
   const { cards: myCards, loading: myLoading } = useMyPublicCards()
@@ -114,9 +115,13 @@ export default function ProposeScreen() {
     try {
       const giveInputs = mode === 'cash' ? [] : give.map(toInput)
       const getInputs = get.map(toInput)
-      const tradeId = await proposeTrade(myId, recipientId)
-      await createProposal(tradeId, giveInputs, getInputs, cashCents)
-      router.replace({ pathname: '/(app)/chat/[id]', params: { id: tradeId } })
+      const id = tradeId || (await proposeTrade(myId, recipientId))
+      await createProposal(id, giveInputs, getInputs, cashCents)
+      if (tradeId) {
+        router.back() // return to the existing chat (it refreshes on focus)
+      } else {
+        router.replace({ pathname: '/(app)/chat/[id]', params: { id } })
+      }
     } catch (err) {
       Alert.alert('Could not send', (err as Error).message)
     } finally {

@@ -12,8 +12,8 @@ import { colors } from '@/lib/theme'
 function statusLine(t: TradeThread): { text: string; tone: 'primary' | 'muted' | 'faint' } {
   if (t.status === 'pending') {
     return t.iAmRequester
-      ? { text: 'Request sent · waiting', tone: 'muted' }
-      : { text: 'Wants to trade with you', tone: 'primary' }
+      ? { text: t.lastMessage ?? 'You inquired', tone: 'muted' }
+      : { text: t.lastMessage ?? 'New inquiry', tone: 'primary' }
   }
   if (t.status === 'declined') return { text: 'Declined', tone: 'faint' }
   if (t.status === 'cancelled') return { text: 'Cancelled', tone: 'faint' }

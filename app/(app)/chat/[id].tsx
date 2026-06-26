@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Stack, useLocalSearchParams } from 'expo-router'
+import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '@/lib/auth'
 import {
@@ -133,14 +133,18 @@ function ProposalBubble({
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const router = useRouter()
   const insets = useSafeAreaInsets()
   const { session } = useAuth()
   const uid = session?.user.id
-  const { trade, messages, proposalsById, otherHandle, iAmRequester, loading, refresh } = useTrade(id)
+  const { trade, messages, proposalsById, otherHandle, otherId, iAmRequester, loading, refresh } = useTrade(id)
 
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const markedRef = useRef(false)
+
+  // Refresh when returning to the chat (e.g. after sending a proposal).
+  useFocusEffect(useCallback(() => { refresh() }, [refresh]))
 
   useEffect(() => {
     if (trade && !markedRef.current) {
@@ -150,8 +154,8 @@ export default function ChatScreen() {
   }, [trade, iAmRequester])
 
   const status = trade?.status
-  const closed = status === 'declined' || status === 'cancelled'
-  const canMessage = status === 'pending' || status === 'accepted' || status === 'completed'
+  const closed = status === 'cancelled'
+  const canMessage = status !== 'cancelled'
 
   async function onSend() {
     const body = draft.trim()
@@ -206,7 +210,29 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
-      <Stack.Screen options={{ headerShown: true, title: otherHandle ? `@${otherHandle}` : 'Trade' }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: otherHandle ? `@${otherHandle}` : 'Trade',
+          headerRight:
+            otherId && !closed
+              ? () => (
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(app)/propose',
+                        params: { tradeId: id, recipientId: otherId, recipientHandle: otherHandle },
+                      })
+                    }
+                    className="flex-row items-center gap-1 active:opacity-60"
+                  >
+                    <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
+                    <Text className="text-primary font-display-semibold text-sm">Propose</Text>
+                  </Pressable>
+                )
+              : undefined,
+        }}
+      />
 
       {loading && messages.length === 0 ? (
         <View className="flex-1 items-center justify-center">
@@ -216,7 +242,9 @@ export default function ChatScreen() {
         <>
           {reversed.length === 0 ? (
             <View className="flex-1 items-center justify-center px-10">
-              <Text className="text-muted text-sm text-center font-display">No messages yet.</Text>
+              <Text className="text-muted text-sm text-center font-display">
+                Say hi to start — then tap <Text className="text-primary font-display-semibold">Propose</Text> to make an offer.
+              </Text>
             </View>
           ) : (
             <FlatList
