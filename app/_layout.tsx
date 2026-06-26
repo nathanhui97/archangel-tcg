@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import { View, ActivityIndicator } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { KeyboardProvider } from 'react-native-keyboard-controller'
 import {
   useFonts,
   SpaceGrotesk_400Regular,
@@ -82,8 +83,9 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <AuthGate>
+      <KeyboardProvider>
+        <AuthProvider>
+          <AuthGate>
           <Stack
             screenOptions={{
               headerStyle: { backgroundColor: colors.bg },
@@ -99,6 +101,7 @@ export default function RootLayout() {
         </AuthGate>
         <StatusBar style="light" />
       </AuthProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   )
 }
