@@ -130,16 +130,24 @@ export async function inquireAboutCard(
     .select('id, status')
     .or(`and(requester_id.eq.${myId},recipient_id.eq.${ownerId}),and(requester_id.eq.${ownerId},recipient_id.eq.${myId})`)
   const open = (existing ?? []).find((t: any) => t.status !== 'declined' && t.status !== 'cancelled')
-  if (open) return open.id
 
-  const { data, error } = await supabase
-    .from('trades')
-    .insert({ recipient_id: ownerId, about_card_id: cardId })
-    .select('id')
-    .single()
-  if (error) throw new Error(error.message)
-  await supabase.from('messages').insert({ trade_id: data.id, body: `Interested in your ${cardLabel} — open to a trade?` })
-  return data.id as string
+  let tradeId: string
+  if (open) {
+    tradeId = open.id
+    // Surface the freshly-requested card on the existing thread.
+    await supabase.from('trades').update({ about_card_id: cardId }).eq('id', tradeId)
+  } else {
+    const { data, error } = await supabase
+      .from('trades')
+      .insert({ recipient_id: ownerId, about_card_id: cardId })
+      .select('id')
+      .single()
+    if (error) throw new Error(error.message)
+    tradeId = data.id as string
+  }
+
+  await supabase.from('messages').insert({ trade_id: tradeId, body: `Interested in your ${cardLabel} — open to a trade?` })
+  return tradeId
 }
 
 export async function respondToTrade(tradeId: string, status: TradeStatus): Promise<void> {
