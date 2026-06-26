@@ -143,6 +143,12 @@ export async function updateBinder(
   if (error) throw new Error(error.message)
 }
 
+/** Set (or clear, with null) the card whose art is the binder's cover. */
+export async function setBinderCover(binderId: string, cardId: string | null): Promise<void> {
+  const { error } = await supabase.from('binders').update({ cover_card_id: cardId }).eq('id', binderId)
+  if (error) throw new Error(error.message)
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Single binder + its items
 // ─────────────────────────────────────────────────────────────────────────

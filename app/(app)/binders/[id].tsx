@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   View,
   Text,
@@ -18,11 +18,14 @@ import {
   updateBinder,
   reorderBinderItems,
   deleteBinder,
+  setBinderCover,
 } from '@/lib/binders'
 import { CardPicker } from '@/components/CardPicker'
 import { DraggableCardGrid } from '@/components/DraggableCardGrid'
 import { BinderMenuSheet } from '@/components/BinderMenuSheet'
+import { CoverPickerSheet } from '@/components/CoverPickerSheet'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { RenameDialog } from '@/components/ui/RenameDialog'
 import { useAuth } from '@/lib/auth'
 import { gridTileWidth } from '@/components/ui/CardTile'
 import { colors } from '@/lib/theme'
@@ -74,6 +77,8 @@ export default function BinderDetailScreen() {
   const [adding, setAdding] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [coverOpen, setCoverOpen] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
   const [confirm, setConfirm] = useState<
     { title: string; message?: string; confirmLabel: string; onConfirm: () => void } | null
   >(null)
@@ -83,6 +88,14 @@ export default function BinderDetailScreen() {
   const { width } = useWindowDimensions()
   const tileW = gridTileWidth(width)
   const tileH = tileW / CARD_RATIO
+
+  // Cover = the chosen card's art, falling back to the binder's first card.
+  const coverUrl = useMemo(() => {
+    const chosen = binder?.cover_card_id
+      ? items.find((i) => i.card_id === binder.cover_card_id)?.card?.image_url
+      : null
+    return chosen ?? items[0]?.card?.image_url ?? null
+  }, [binder?.cover_card_id, items])
 
   // Leave edit mode automatically once the binder is empty.
   useEffect(() => {
@@ -142,6 +155,16 @@ export default function BinderDetailScreen() {
     if (!binder) return
     await updateBinder(binder.id, { name: next })
     refresh()
+  }
+
+  async function pickCover(cardId: string) {
+    if (!binder) return
+    try {
+      await setBinderCover(binder.id, cardId)
+      refresh()
+    } catch (err) {
+      Alert.alert('Error', (err as Error).message)
+    }
   }
 
   if (loading) {
@@ -218,35 +241,61 @@ export default function BinderDetailScreen() {
         }}
       />
 
-      <View className="px-5 pt-1 pb-3">
-        <Text className="text-ink text-[22px] font-display-bold" numberOfLines={1}>{binder.name}</Text>
-        <View className="flex-row items-center justify-between mt-3">
+      <View className="items-center px-5 pt-2 pb-4">
+        {/* Cover card */}
+        <Pressable
+          onPress={isOwner && items.length > 0 ? () => setCoverOpen(true) : undefined}
+          className="active:opacity-80"
+        >
+          <View
+            style={{ width: 116, height: 116 / CARD_RATIO }}
+            className="rounded-xl overflow-hidden bg-surface-raised border border-subtle"
+          >
+            {coverUrl ? (
+              <Image source={{ uri: coverUrl }} resizeMode="cover" className="w-full h-full" />
+            ) : (
+              <View className="w-full h-full items-center justify-center">
+                <Ionicons name="albums-outline" size={28} color={colors.faint2} />
+              </View>
+            )}
+          </View>
+          {isOwner && items.length > 0 ? (
+            <View
+              className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-primary items-center justify-center border-2"
+              style={{ borderColor: colors.bg }}
+            >
+              <Ionicons name="image" size={14} color={colors.primaryInk} />
+            </View>
+          ) : null}
+        </Pressable>
+
+        {/* Name + edit pencil */}
+        <Pressable
+          onPress={isOwner ? () => setRenameOpen(true) : undefined}
+          className="flex-row items-center gap-1.5 mt-3 active:opacity-70"
+        >
+          <Text className="text-ink text-xl font-display-bold text-center" numberOfLines={1}>{binder.name}</Text>
+          {isOwner ? <Ionicons name="pencil" size={15} color={colors.muted2} /> : null}
+        </Pressable>
+
+        {/* Count · public/private */}
+        <View className="flex-row items-center justify-center gap-2 mt-1.5">
           <Text className="text-muted text-sm font-display">
             {items.length} card{items.length !== 1 ? 's' : ''}
           </Text>
-
+          <Text className="text-faint-2 text-sm">·</Text>
           {isOwner ? (
-            <View className="flex-row bg-surface border border-subtle rounded-xl p-0.5">
-              {([true, false] as const).map((pub) => {
-                const active = binder.is_public === pub
-                return (
-                  <Pressable
-                    key={String(pub)}
-                    onPress={() =>
-                      setPublic(pub).catch((err) => Alert.alert('Error', (err as Error).message))
-                    }
-                    className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-[10px] ${active ? 'bg-primary/10' : ''}`}
-                  >
-                    {pub && active && <View className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                    <Text className={`text-xs font-display-medium ${active ? 'text-primary' : 'text-muted-2'}`}>
-                      {pub ? 'Public' : 'Private'}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
+            <Pressable
+              onPress={() => setPublic(!binder.is_public).catch((err) => Alert.alert('Error', (err as Error).message))}
+              className="flex-row items-center gap-1 active:opacity-70"
+            >
+              <View className={`w-1.5 h-1.5 rounded-full ${binder.is_public ? 'bg-primary' : 'bg-faint-2'}`} />
+              <Text className={`text-sm font-display-medium ${binder.is_public ? 'text-primary' : 'text-muted-2'}`}>
+                {binder.is_public ? 'Public' : 'Private'}
+              </Text>
+            </Pressable>
           ) : (
-            <Text className={`text-xs font-display-medium ${binder.is_public ? 'text-primary' : 'text-faint-2'}`}>
+            <Text className={`text-sm font-display-medium ${binder.is_public ? 'text-primary' : 'text-faint-2'}`}>
               {binder.is_public ? 'Public' : 'Private'}
             </Text>
           )}
@@ -303,9 +352,27 @@ export default function BinderDetailScreen() {
         onClose={() => setMenuOpen(false)}
         name={binder.name}
         isPublic={binder.is_public}
-        onRename={rename}
+        onRequestRename={() => setRenameOpen(true)}
         onSetPublic={setPublic}
         onDelete={confirmDeleteBinder}
+      />
+
+      <CoverPickerSheet
+        visible={coverOpen}
+        onClose={() => setCoverOpen(false)}
+        items={items}
+        currentCoverId={binder.cover_card_id}
+        onPick={pickCover}
+      />
+
+      <RenameDialog
+        visible={renameOpen}
+        initialName={binder.name}
+        onSave={async (next) => {
+          await rename(next)
+          setRenameOpen(false)
+        }}
+        onCancel={() => setRenameOpen(false)}
       />
 
       <ConfirmDialog

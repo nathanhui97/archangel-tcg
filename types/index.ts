@@ -82,6 +82,7 @@ export interface Binder {
   name: string
   binder_type: BinderType
   is_public: boolean
+  cover_card_id: string | null
   created_at: string
   updated_at: string
 }
