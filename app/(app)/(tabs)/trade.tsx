@@ -7,7 +7,6 @@ import { useMyProfile } from '@/lib/profile'
 import { useMyWantlist } from '@/lib/wantlist'
 import { useMyPublicCards } from '@/lib/binders'
 import { useMatches } from '@/lib/matches'
-import { useIncomingTradeCount } from '@/lib/trades'
 import type { Game } from '@/types'
 import { Chip } from '@/components/ui'
 import { ScreenHeader } from '@/components/ui/ScreenHeader'
@@ -43,7 +42,6 @@ export default function TradeScreen() {
   const noLocation = !profileLoading && !profile?.lat
 
   const { matches } = useMatches(lat, lng, radiusKm)
-  const { count: incoming } = useIncomingTradeCount()
 
   const hasLocation = !!profile?.lat
   const hasTradeCards = myPublicCards.length > 0
@@ -55,22 +53,7 @@ export default function TradeScreen() {
       <ScreenHeader
         title="Trade"
         subtitle={segment === 'listed' ? 'Cards near you to trade' : "Who's hunting cards nearby"}
-        right={
-          <View className="flex-row items-center gap-3">
-            <Pressable onPress={() => router.push('/(app)/messages')} hitSlop={8} className="active:opacity-60">
-              <Ionicons name="chatbubbles-outline" size={22} color={colors.ink} />
-              {incoming > 0 && (
-                <View
-                  className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-primary items-center justify-center border"
-                  style={{ borderColor: colors.bg }}
-                >
-                  <Text className="text-primary-ink font-mono-bold text-[9px]">{incoming}</Text>
-                </View>
-              )}
-            </Pressable>
-            <DistanceTag km={radiusKm} />
-          </View>
-        }
+        right={<DistanceTag km={radiusKm} />}
       />
 
       {!setupComplete && (

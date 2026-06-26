@@ -1,9 +1,11 @@
 import { useCallback } from 'react'
 import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl } from 'react-native'
-import { Stack, useRouter, useFocusEffect } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useTrades, type TradeThread } from '@/lib/trades'
 import { Avatar } from '@/components/ui'
+import { ScreenHeader } from '@/components/ui/ScreenHeader'
 import { RadarLogo } from '@/components/ui/RadarLogo'
 import { colors } from '@/lib/theme'
 
@@ -16,7 +18,6 @@ function statusLine(t: TradeThread): { text: string; tone: 'primary' | 'muted' |
   if (t.status === 'declined') return { text: 'Declined', tone: 'faint' }
   if (t.status === 'cancelled') return { text: 'Cancelled', tone: 'faint' }
   if (t.status === 'completed') return { text: 'Trade completed', tone: 'faint' }
-  // accepted
   return { text: t.lastMessage ?? 'Say hi to arrange a meetup', tone: t.lastMessage ? 'muted' : 'faint' }
 }
 
@@ -29,10 +30,7 @@ const TONE: Record<'primary' | 'muted' | 'faint', string> = {
 function Row({ thread, onPress }: { thread: TradeThread; onPress: () => void }) {
   const line = statusLine(thread)
   return (
-    <Pressable
-      onPress={onPress}
-      className="flex-row items-center px-5 py-3.5 active:opacity-70"
-    >
+    <Pressable onPress={onPress} className="flex-row items-center px-5 py-3.5 active:opacity-70">
       <View>
         <Avatar handle={thread.otherHandle} size={48} />
         {thread.unread && (
@@ -41,9 +39,7 @@ function Row({ thread, onPress }: { thread: TradeThread; onPress: () => void }) 
       </View>
       <View className="flex-1 ml-3">
         <Text className="text-ink font-mono-bold text-sm">@{thread.otherHandle}</Text>
-        <Text className={`text-xs mt-0.5 font-display ${TONE[line.tone]}`} numberOfLines={1}>
-          {line.text}
-        </Text>
+        <Text className={`text-xs mt-0.5 font-display ${TONE[line.tone]}`} numberOfLines={1}>{line.text}</Text>
       </View>
       {thread.status === 'pending' && !thread.iAmRequester ? (
         <View className="bg-primary/10 border border-primary-soft rounded-full px-2.5 py-1 mr-1">
@@ -62,9 +58,12 @@ export default function MessagesScreen() {
 
   useFocusEffect(useCallback(() => { refresh() }, [refresh]))
 
+  const subtitle =
+    threads.length > 0 ? `${threads.length} conversation${threads.length !== 1 ? 's' : ''}` : 'Trade proposals & chats'
+
   return (
-    <View className="flex-1 bg-bg">
-      <Stack.Screen options={{ headerShown: true, title: 'Trades' }} />
+    <SafeAreaView className="flex-1 bg-bg" edges={['top']}>
+      <ScreenHeader title="Messages" subtitle={subtitle} />
 
       {loading && threads.length === 0 ? (
         <View className="flex-1 items-center justify-center">
@@ -82,14 +81,14 @@ export default function MessagesScreen() {
           ListEmptyComponent={
             <View className="items-center pt-24 px-8">
               <RadarLogo size={120} />
-              <Text className="text-ink font-display-semibold text-base mt-6">No trades yet</Text>
+              <Text className="text-ink font-display-semibold text-base mt-6">No messages yet</Text>
               <Text className="text-muted text-sm mt-2 text-center font-display">
-                Find a match and tap “Propose trade” to start a conversation.
+                Propose a trade on a card you want and the conversation shows up here.
               </Text>
             </View>
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   )
 }

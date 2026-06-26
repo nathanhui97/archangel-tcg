@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useIncomingTradeCount } from '@/lib/trades'
 import { colors } from '@/lib/theme'
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name']
@@ -18,6 +19,7 @@ function tabIcon(name: IoniconsName, focusedName: IoniconsName) {
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets()
+  const { count: incoming } = useIncomingTradeCount()
   return (
     <Tabs
       screenOptions={{
@@ -45,6 +47,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="my-cards"
         options={{ title: 'Binders', tabBarIcon: tabIcon('albums-outline', 'albums') }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          tabBarIcon: tabIcon('chatbubble-outline', 'chatbubble'),
+          tabBarBadge: incoming > 0 ? incoming : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.primary, color: colors.primaryInk, fontFamily: 'JetBrainsMono_700Bold', fontSize: 10 },
+        }}
       />
       <Tabs.Screen
         name="profile"

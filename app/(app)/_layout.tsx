@@ -23,7 +23,6 @@ export default function AppLayout() {
       <Stack.Screen name="invite" options={{ headerShown: true, title: 'Invite players' }} />
       <Stack.Screen name="card/[id]" options={{ headerShown: true, title: '' }} />
       <Stack.Screen name="trader/[handle]" options={{ headerShown: true, title: '' }} />
-      <Stack.Screen name="messages" options={{ headerShown: true, title: 'Trades' }} />
       <Stack.Screen name="chat/[id]" options={{ headerShown: true, title: '' }} />
       <Stack.Screen name="binders/index" options={{ headerShown: true, title: 'My Binders' }} />
       <Stack.Screen name="binders/new" options={{ headerShown: true, title: 'New binder' }} />
