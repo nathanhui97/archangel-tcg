@@ -11,7 +11,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useHeaderHeight } from '@react-navigation/elements'
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller'
+import { ChatKeyboardAvoider } from '@/components/KeyboardCompat'
 import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '@/lib/auth'
@@ -251,11 +251,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior="padding"
-      keyboardVerticalOffset={headerHeight}
-      style={{ flex: 1, backgroundColor: colors.bg }}
-    >
+    <ChatKeyboardAvoider offset={headerHeight} style={{ flex: 1, backgroundColor: colors.bg }}>
       <Stack.Screen
         options={{
           headerShown: true,
@@ -328,6 +324,6 @@ export default function ChatScreen() {
           )}
         </>
       )}
-    </KeyboardAvoidingView>
+    </ChatKeyboardAvoider>
   )
 }

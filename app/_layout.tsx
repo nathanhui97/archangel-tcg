@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import { View, ActivityIndicator } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { KeyboardProvider } from 'react-native-keyboard-controller'
+import { KeyboardProviderCompat } from '@/components/KeyboardCompat'
 import {
   useFonts,
   SpaceGrotesk_400Regular,
@@ -83,7 +83,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <KeyboardProvider>
+      <KeyboardProviderCompat>
         <AuthProvider>
           <AuthGate>
           <Stack
@@ -101,7 +101,7 @@ export default function RootLayout() {
         </AuthGate>
         <StatusBar style="light" />
       </AuthProvider>
-      </KeyboardProvider>
+      </KeyboardProviderCompat>
     </GestureHandlerRootView>
   )
 }
