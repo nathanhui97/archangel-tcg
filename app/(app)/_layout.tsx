@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router'
+import { usePushNotifications } from '@/lib/push'
 import { colors } from '@/lib/theme'
 
 export default function AppLayout() {
+  usePushNotifications()
   return (
     <Stack
       screenOptions={{
