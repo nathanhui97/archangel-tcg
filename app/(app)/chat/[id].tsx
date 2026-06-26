@@ -8,6 +8,7 @@ import {
   Pressable,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Platform,
   Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -251,7 +252,11 @@ export default function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-bg" behavior="padding" keyboardVerticalOffset={headerHeight}>
+    <KeyboardAvoidingView
+      className="flex-1 bg-bg"
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+    >
       <Stack.Screen
         options={{
           headerShown: true,
