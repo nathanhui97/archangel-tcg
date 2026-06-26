@@ -12,15 +12,14 @@ alter table public.binder_items
 -- manual ordering, so re-running the migration never clobbers a user's layout.
 -- (Postgres evaluates the guard against the statement-start snapshot, so on the
 -- first run — when every row is still 0 — it numbers all rows in one pass.)
-with ordered as (
+update public.binder_items bi
+set position = sub.rn
+from (
   select id,
          row_number() over (partition by binder_id order by created_at) - 1 as rn
   from public.binder_items
-)
-update public.binder_items bi
-set position = ordered.rn
-from ordered
-where ordered.id = bi.id
+) sub
+where sub.id = bi.id
   and not exists (select 1 from public.binder_items x where x.position <> 0);
 
 create index if not exists binder_items_binder_position_idx
