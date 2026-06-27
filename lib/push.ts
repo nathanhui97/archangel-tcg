@@ -58,8 +58,12 @@ export function usePushNotifications() {
 
   useEffect(() => {
     sub.current = Notifications.addNotificationResponseReceivedListener((resp) => {
-      const tradeId = (resp.notification.request.content.data as any)?.tradeId
-      if (tradeId) router.push({ pathname: '/(app)/chat/[id]', params: { id: String(tradeId) } })
+      const data = resp.notification.request.content.data as any
+      if (data?.tradeId) {
+        router.push({ pathname: '/(app)/chat/[id]', params: { id: String(data.tradeId) } })
+      } else if (data?.cardId) {
+        router.push({ pathname: '/(app)/card/[id]', params: { id: String(data.cardId) } })
+      }
     })
     return () => sub.current?.remove()
   }, [])
