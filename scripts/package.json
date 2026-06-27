@@ -7,7 +7,8 @@
   "scripts": {
     "seed:gundam": "tsx seed-gundam.ts",
     "seed:onepiece": "tsx seed-onepiece.ts",
-    "smoke-test": "tsx smoke-test.ts"
+    "smoke-test": "tsx smoke-test.ts",
+    "smoke-test-trades": "tsx smoke-test-trades.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
