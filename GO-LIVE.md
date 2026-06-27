@@ -148,4 +148,8 @@ The engineering is largely done and **provably solid** (backend: 26/26 + 22/22 s
 3. `eas init` + **dev build** → verify keyboard + push + device QA.
 4. Set the real **support email** in `landing/privacy.html` / `terms.html` and **deploy the landing site**.
 
-**Still code (when you're ready):** push credentials (during build), prod-config check, optional Sentry, nearby-match radar push, onboarding nudge.
+**Still code (when you're ready):** push credentials (during build), prod-config check, optional Sentry.
+
+**Backlog / fast-follow (post-dev-build or post-launch):**
+- **Social sign-in** — Sign in with Apple **+** Google on iOS (Apple's 4.8 requires Apple if Google is offered), Google on Android. Additive to email OTP. Needs native modules + dev build + Google Cloud/Apple Service ID config.
+- **City display** — reverse-geocode the GPS fix to a city label (e.g. "Toronto, ON") for nicer onboarding/profile. Uses `expo-location`'s built-in geocoder (no API key). Optional — not needed for matching.
