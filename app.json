@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bindar.app"
+      "bundleIdentifier": "com.bindar.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -29,12 +32,23 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
+          "icon": "./assets/images/adaptive-icon.png",
           "color": "#35F58A"
         }
       ],
-      "expo-location",
-      "expo-image-picker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Bindar uses your approximate location to match you with nearby traders. It's rounded to about a 1 km area and never shown precisely."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Bindar needs photo access so you can add a photo of a card to your binder.",
+          "cameraPermission": "Bindar needs camera access so you can take a photo of a card for your binder."
+        }
+      ],
       "expo-secure-store"
     ],
     "experiments": {
