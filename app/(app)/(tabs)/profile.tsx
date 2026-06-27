@@ -1,17 +1,32 @@
 import { useState } from 'react'
-import { View, Text, Switch, ActivityIndicator, Pressable } from 'react-native'
+import { View, Text, Switch, ActivityIndicator, Pressable, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Link } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useMyProfile, updateProfile } from '@/lib/profile'
+import { useMyProfile, updateProfile, deleteMyAccount } from '@/lib/profile'
 import { useAuth } from '@/lib/auth'
 import { Button, MonoLabel, Card } from '@/components/ui'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { colors } from '@/lib/theme'
 
 export default function ProfileScreen() {
   const { profile, loading, refresh } = useMyProfile()
   const { signOut } = useAuth()
   const [togglingShip, setTogglingShip] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    try {
+      await deleteMyAccount()
+      await signOut() // session is now invalid; AuthGate redirects to landing
+    } catch (err) {
+      setDeleting(false)
+      setConfirmDelete(false)
+      Alert.alert('Could not delete account', (err as Error).message)
+    }
+  }
 
   async function toggleWillingToShip(value: boolean) {
     if (!profile) return
@@ -121,7 +136,22 @@ export default function ProfileScreen() {
 
         {/* Sign out */}
         <Button title="Sign out" variant="danger" onPress={signOut} />
+
+        {/* Delete account (Apple requirement) */}
+        <Pressable onPress={() => setConfirmDelete(true)} className="items-center mt-5 py-2 active:opacity-60">
+          <Text className="text-danger text-sm font-display-medium">Delete account</Text>
+        </Pressable>
       </View>
+
+      <ConfirmDialog
+        visible={confirmDelete}
+        title="Delete your account?"
+        message="This permanently deletes your profile, binders, wantlist, and trades. This can't be undone."
+        confirmLabel={deleting ? 'Deleting…' : 'Delete'}
+        destructive
+        onConfirm={handleDeleteAccount}
+        onCancel={() => !deleting && setConfirmDelete(false)}
+      />
     </SafeAreaView>
   )
 }

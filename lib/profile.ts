@@ -35,3 +35,9 @@ export async function updateProfile(
   const { error } = await supabase.from('profiles').update(updates).eq('id', user.id)
   if (error) throw new Error(error.message)
 }
+
+/** Permanently delete the signed-in user's account and all their data. */
+export async function deleteMyAccount(): Promise<void> {
+  const { error } = await supabase.rpc('delete_my_account')
+  if (error) throw new Error(error.message)
+}
