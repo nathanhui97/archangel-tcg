@@ -55,8 +55,8 @@ The engineering is largely done and **provably solid** (backend: 26/26 + 22/22 s
 
 - [ ] **[you]** **Apple Developer Program** — $99/yr, identity verification 1–3 days.
 - [ ] **[you]** **Google Play Developer** — $25 one-time. ⚠️ New personal accounts must run a **closed test with ≥12 testers for 14 days** before production. Start this track EARLY.
-- [ ] **[both]** **Privacy Policy** (required by both stores) — discloses email, approximate location, messages, photos. Host on the landing site. *(code can draft + publish the page.)*
-- [ ] **[both]** **Terms of Service** — host alongside the policy.
+- [x] **[both]** **Privacy Policy** — drafted at `landing/privacy.html` (real data practices). ⚠️ set the real support email + deploy.
+- [x] **[both]** **Terms of Service** — drafted at `landing/terms.html` (in-person-risk + no-payments + Bandai non-affiliation). ⚠️ confirm governing-law jurisdiction (defaulted to Ontario, CA) + deploy.
 - [ ] **[you]** Decide **affiliation/IP framing** (see Risks): add a "Not affiliated with / endorsed by Bandai" disclaimer; keep their marks out of your icon + listing.
 - [ ] **[you]** Support contact (email or page) for the store listings.
 
@@ -64,9 +64,9 @@ The engineering is largely done and **provably solid** (backend: 26/26 + 22/22 s
 
 ## Phase 2 — Production hardening  (mostly code)
 
-- [ ] **[code]** **Account deletion flow** — Apple *requires* in-app deletion when you have sign-up. Profile → delete account → RLS-safe wipe (cascades binders/trades/messages).
-- [ ] **[code]** **Real app icon + splash** — replace placeholders (mark = `RadarLogo`). iOS icon + Android adaptive icon + splash. *(you approve the art.)*
-- [ ] **[code]** **iOS permission strings** (Info.plist via Expo plugins): location, notifications, camera, photo library — clear "why" text.
+- [x] **[code]** **Account deletion flow** — done + verified (migration 0019 `delete_my_account()`; Profile → Delete account; cascade wipe confirmed).
+- [x] **[code]** **Real app icon + splash** — done from the brand kit (`scripts/gen-icons.mjs`): full radar icon, padded Android adaptive foreground, mark splash.
+- [x] **[code]** **iOS permission strings** — done in `app.json` (location/camera/photos via plugins; notif icon = mark; `ITSAppUsesNonExemptEncryption=false`).
 - [ ] **[you/code]** **Push credentials**: APNs key (iOS) + FCM v1 (Android). EAS manages these during build; you grant access.
 - [ ] **[you]** **Rotate the Supabase `service_role` key** — it appeared in early chat (see HANDOFF). Regenerate in dashboard; update `scripts/.env` only.
 - [ ] **[code]** Confirm **prod env config** (EXPO_PUBLIC_ keys correct; nothing secret bundled).
@@ -138,10 +138,14 @@ The engineering is largely done and **provably solid** (backend: 26/26 + 22/22 s
 
 ---
 
-## What I (code) can start now without the dev build
+## Progress (2026-06-26)
 
-1. **Account-deletion flow** (Apple blocker) — highest priority.
-2. **App icon + splash** pipeline in `app.json` (from `RadarLogo`).
-3. **iOS permission strings** + finalize `eas.json` production profile.
-4. **Privacy policy + terms** pages on the landing site.
-5. This doc stays the source of truth — tick items as we go.
+**Done:** account deletion (verified), app icon + adaptive icon + splash, iOS permission strings, privacy + terms drafts, `eas.json` profiles, dev-build deps (keyboard-controller + expo-dev-client), backend security smoke test (22/22).
+
+**Your turn (external / can't be coded):**
+1. Create **Apple Developer** ($99) + **Google Play** ($25) accounts — slowest, start now.
+2. **Rotate the Supabase service-role key** (dashboard) → update `scripts/.env` only.
+3. `eas init` + **dev build** → verify keyboard + push + device QA.
+4. Set the real **support email** in `landing/privacy.html` / `terms.html` and **deploy the landing site**.
+
+**Still code (when you're ready):** push credentials (during build), prod-config check, optional Sentry, nearby-match radar push, onboarding nudge.
