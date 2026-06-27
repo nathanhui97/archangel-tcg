@@ -13,6 +13,7 @@ export interface Profile {
   games: Game[]
   lat: number | null
   lng: number | null
+  city: string | null
   willing_to_ship: boolean
   created_at: string
 }

@@ -35,6 +35,7 @@ export default function ProfileSetupScreen() {
   const [locStatus, setLocStatus] = useState<'none' | 'capturing' | 'set' | 'denied'>('none')
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
+  const [city, setCity] = useState<string | null>(null)
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -90,6 +91,19 @@ export default function ProfileSetupScreen() {
       setLat(Math.round(pos.coords.latitude * 100) / 100)
       setLng(Math.round(pos.coords.longitude * 100) / 100)
       setLocStatus('set')
+
+      // Best-effort city label for display (device geocoder, no API key).
+      try {
+        const [place] = await Location.reverseGeocodeAsync({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        })
+        const cityName = place?.city || place?.subregion || place?.district || null
+        const label = [cityName, place?.region].filter(Boolean).join(', ')
+        setCity(label || null)
+      } catch {
+        // City is optional — fall back to "area set" silently.
+      }
     } catch {
       setError('Could not read your location. Try again.')
       setLocStatus('none')
@@ -124,6 +138,7 @@ export default function ProfileSetupScreen() {
       games,
       lat,
       lng,
+      city,
     })
 
     setSaving(false)
@@ -251,7 +266,7 @@ export default function ProfileSetupScreen() {
               <Ionicons name="location-outline" size={18} color={locStatus === 'set' ? colors.primary : colors.faint2} />
               <Text className={`flex-1 ml-3 text-base font-display ${locStatus === 'set' ? 'text-ink' : 'text-faint-2'}`}>
                 {locStatus === 'set'
-                  ? 'Your area is set'
+                  ? city ?? 'Your area is set'
                   : locStatus === 'capturing'
                     ? 'Getting your area…'
                     : locStatus === 'denied'

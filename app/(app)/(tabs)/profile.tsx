@@ -76,7 +76,7 @@ export default function ProfileScreen() {
                 />
               )}
               <Text className={`text-sm font-display-medium ${hasLocation ? 'text-ink' : 'text-amber'}`}>
-                {hasLocation ? 'Your area is set' : 'No location set'}
+                {hasLocation ? profile?.city ?? 'Your area is set' : 'No location set'}
               </Text>
             </View>
             <Text className="text-muted text-xs mt-0.5 font-display">
