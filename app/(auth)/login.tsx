@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   View,
   Text,
@@ -7,9 +7,16 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native'
+import * as AppleAuthentication from 'expo-apple-authentication'
 import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '@/lib/supabase'
+import {
+  appleAuthAvailable,
+  isExpoGo,
+  signInWithApple,
+  signInWithGoogle,
+} from '@/lib/social-auth'
 import { Button, MonoLabel } from '@/components/ui'
 import { colors } from '@/lib/theme'
 
@@ -22,14 +29,33 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [socialBusy, setSocialBusy] = useState(false)
+  const [appleReady, setAppleReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   const isSignup = mode === 'signup'
 
+  useEffect(() => {
+    appleAuthAvailable().then(setAppleReady)
+  }, [])
+
   function clearMessages() {
     if (error) setError(null)
     if (notice) setNotice(null)
+  }
+
+  async function handleSocial(fn: () => Promise<{ error?: string; cancelled?: boolean }>) {
+    clearMessages()
+    setSocialBusy(true)
+    try {
+      const { error: err, cancelled } = await fn()
+      if (cancelled) return
+      if (err) setError(err)
+      // On success, AuthGate reacts to the new session and routes forward.
+    } finally {
+      setSocialBusy(false)
+    }
   }
 
   async function handleSubmit() {
@@ -164,6 +190,37 @@ export default function LoginScreen() {
             <Text className="text-primary font-display-medium">{isSignup ? 'Sign in' : 'Create an account'}</Text>
           </Text>
         </Pressable>
+
+        {/* Social sign-in — native modules only exist in a dev/standalone build,
+            so we hide this whole block in Expo Go. */}
+        {!isExpoGo && (
+          <View className="mt-9">
+            <View className="flex-row items-center">
+              <View className="flex-1 h-px bg-subtle" />
+              <Text className="text-faint text-xs mx-3 font-mono">OR</Text>
+              <View className="flex-1 h-px bg-subtle" />
+            </View>
+
+            {appleReady && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                cornerRadius={12}
+                style={{ height: 52, marginTop: 20 }}
+                onPress={() => handleSocial(signInWithApple)}
+              />
+            )}
+
+            <Pressable
+              onPress={() => handleSocial(signInWithGoogle)}
+              disabled={socialBusy}
+              className="flex-row items-center justify-center bg-surface border border-subtle rounded-xl py-4 mt-4 active:opacity-70"
+            >
+              <Ionicons name="logo-google" size={18} color={colors.ink} />
+              <Text className="text-ink font-display-medium ml-3 text-base">Continue with Google</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     </KeyboardAvoidingView>
   )

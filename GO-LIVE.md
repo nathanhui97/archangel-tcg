@@ -151,5 +151,5 @@ The engineering is largely done and **provably solid** (backend: 26/26 + 22/22 s
 **Still code (when you're ready):** push credentials (during build), prod-config check, optional Sentry.
 
 **Backlog / fast-follow (post-dev-build or post-launch):**
-- **Social sign-in** — Sign in with Apple **+** Google on iOS (Apple's 4.8 requires Apple if Google is offered), Google on Android. Additive to email OTP. Needs native modules + dev build + Google Cloud/Apple Service ID config.
+- ~~**Social sign-in**~~ — **App code done (2026-06-28).** Native Sign in with Apple + Google via Supabase `signInWithIdToken` (`lib/social-auth.ts` + buttons in `login.tsx`, hidden in Expo Go). **Remaining is external config only** — Google Cloud OAuth client IDs (free) + Apple capability ($99 Dev account) + enable both providers in Supabase + a dev build to test. Walkthrough: `doc/social-signin-setup.md`.
 - **City display** — reverse-geocode the GPS fix to a city label (e.g. "Toronto, ON") for nicer onboarding/profile. Uses `expo-location`'s built-in geocoder (no API key). Optional — not needed for matching.
