@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, FlatList, Pressable, Alert, useWindowDimensions } from 'react-native'
+import { View, Text, FlatList, Pressable, Alert, ActivityIndicator, useWindowDimensions } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -24,8 +24,9 @@ export default function TraderProfileScreen() {
   const { profile } = useMyProfile()
   const [segment, setSegment] = useState<Segment>('trade')
 
-  const { cards } = useNearbyCards(profile?.lat ?? null, profile?.lng ?? null, 100, null)
-  const { items: wants } = useNearbyWantlists(profile?.lat ?? null, profile?.lng ?? null, 100, null)
+  const { cards, loading: cardsLoading } = useNearbyCards(profile?.lat ?? null, profile?.lng ?? null, 100, null)
+  const { items: wants, loading: wantsLoading } = useNearbyWantlists(profile?.lat ?? null, profile?.lng ?? null, 100, null)
+  const dataLoading = cardsLoading || wantsLoading
   const { cards: myPublicCards } = useMyPublicCards()
   const { cardIds: myWantIds } = useMyWantlist()
 
@@ -66,12 +67,18 @@ export default function TraderProfileScreen() {
     <View className="flex-1 bg-bg">
       <Stack.Screen options={{ headerShown: true, title: '' }} />
 
+      {dataLoading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : (
+        <>
       <FlatList
         data={data}
         keyExtractor={(item: any, i) => `${segment}-${item.binder_item_id ?? item.card_id}-${i}`}
         numColumns={3}
         columnWrapperStyle={{ gap: 10, paddingHorizontal: 20 }}
-        contentContainerStyle={{ gap: 14, paddingBottom: 110 }}
+        contentContainerStyle={{ gap: 14, paddingBottom: insets.bottom + 96 }}
         ListHeaderComponent={
           <View>
             {/* Identity */}
@@ -171,6 +178,8 @@ export default function TraderProfileScreen() {
           <Text className="text-primary-ink font-display-bold text-base">{inquiring ? 'Opening…' : 'Inquire'}</Text>
         </Pressable>
       </View>
+        </>
+      )}
     </View>
   )
 }

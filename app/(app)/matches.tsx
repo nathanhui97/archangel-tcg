@@ -67,8 +67,8 @@ function MatchCard({ match }: { match: Match }) {
         onPress={() => router.push({ pathname: '/(app)/trader/[handle]', params: { handle: match.handle } })}
         className="flex-row items-center justify-center gap-2 mt-4 bg-primary/10 border border-primary rounded-xl py-2.5 active:opacity-70"
       >
-        <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
-        <Text className="text-primary font-display-semibold text-sm">Propose trade</Text>
+        <Ionicons name="person-circle-outline" size={16} color={colors.primary} />
+        <Text className="text-primary font-display-semibold text-sm">View trader</Text>
       </Pressable>
     </View>
   )

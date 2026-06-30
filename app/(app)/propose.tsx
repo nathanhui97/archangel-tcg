@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/auth'
 import { useMyPublicCards, useUserPublicCards, type TradeCard } from '@/lib/binders'
 import { proposeTrade, createProposal, type ProposalItemInput } from '@/lib/trades'
 import { CardSelectSheet } from '@/components/CardSelectSheet'
+import { ChatKeyboardAvoider } from '@/components/KeyboardCompat'
 import { MonoLabel } from '@/components/ui'
 import { colors } from '@/lib/theme'
 import type { Condition } from '@/types'
@@ -140,7 +141,8 @@ export default function ProposeScreen() {
       : `${give.length}${cashCents > 0 ? ` + $${(cashCents / 100).toFixed(0)}` : ''} for ${get.length}`
 
   return (
-    <View className="flex-1 bg-bg">
+    <ChatKeyboardAvoider offset={insets.top + 44} style={{ flex: 1 }}>
+      <View className="flex-1 bg-bg">
       <Stack.Screen options={{ headerShown: true, title: 'Propose trade' }} />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
@@ -265,6 +267,7 @@ export default function ProposeScreen() {
         selectedIds={getIds}
         onToggle={toggle('get')}
       />
-    </View>
+      </View>
+    </ChatKeyboardAvoider>
   )
 }

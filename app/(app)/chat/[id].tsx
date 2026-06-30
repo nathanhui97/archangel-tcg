@@ -198,8 +198,8 @@ export default function ChatScreen() {
     if (!body || !id) return
     setSending(true)
     try {
-      setDraft('')
       await sendMessage(id, body)
+      setDraft('') // clear only after a successful send so a failure keeps the text
       await refresh()
     } catch (err) {
       Alert.alert('Error', (err as Error).message)

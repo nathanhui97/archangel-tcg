@@ -1,4 +1,4 @@
-import { View, Text, Pressable } from 'react-native'
+import { View } from 'react-native'
 import { useRouter, Stack } from 'expo-router'
 import { CardSearch } from '@/components/CardSearch'
 
@@ -11,11 +11,7 @@ export default function BrowseCardsScreen() {
 
       <View className="pt-4">
         <CardSearch
-          onSelect={(card) => {
-            // For Milestone 3 this just navigates — Milestone 4 will let users
-            // add this card to a binder from here.
-            console.log('Tapped card:', card.id, card.name)
-          }}
+          onSelect={(card) => router.push({ pathname: '/(app)/card/[id]', params: { id: card.id } })}
         />
       </View>
     </View>

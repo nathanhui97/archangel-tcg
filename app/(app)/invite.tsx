@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, Pressable, Share } from 'react-native'
+import { View, Text, Pressable, Share, ActivityIndicator } from 'react-native'
 import { Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import QRCode from 'react-native-qrcode-svg'
@@ -10,10 +10,22 @@ import { colors } from '@/lib/theme'
 
 export default function InviteScreen() {
   const { profile } = useMyProfile()
-  const handle = profile?.handle ?? 'me'
+  const handle = profile?.handle
+  const [copied, setCopied] = useState(false)
+
+  // Gate the QR + link on a loaded handle so we never render a real-looking but
+  // invalid "bindar.app/i/me" link before the profile resolves.
+  if (!handle) {
+    return (
+      <View className="flex-1 bg-bg items-center justify-center">
+        <Stack.Screen options={{ headerShown: true, title: 'Invite players' }} />
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    )
+  }
+
   const link = `bindar.app/i/${handle}`
   const url = `https://${link}`
-  const [copied, setCopied] = useState(false)
 
   async function copy() {
     await Clipboard.setStringAsync(url)
@@ -22,7 +34,7 @@ export default function InviteScreen() {
   }
 
   async function share() {
-    await Share.share({ message: `Trade Gundam cards with me on Bindar — ${url}` })
+    await Share.share({ message: `Trade cards with me on Bindar — ${url}` })
   }
 
   return (
