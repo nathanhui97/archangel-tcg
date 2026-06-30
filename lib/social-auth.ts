@@ -36,6 +36,9 @@ export async function signInWithGoogle(): Promise<SocialResult> {
   try {
     const { GoogleSignin, statusCodes } = loadGoogle()
     if (!googleConfigured) {
+      // [TEMP DEBUG] confirm the exact webClientId reaching the native layer
+      console.log('[google-debug] webClientId =', JSON.stringify(GOOGLE_WEB_CLIENT_ID))
+      console.log('[google-debug] iosClientId =', JSON.stringify(GOOGLE_IOS_CLIENT_ID))
       GoogleSignin.configure({
         webClientId: GOOGLE_WEB_CLIENT_ID,
         iosClientId: GOOGLE_IOS_CLIENT_ID,
@@ -55,6 +58,10 @@ export async function signInWithGoogle(): Promise<SocialResult> {
     if (error) return { error: error.message }
     return {}
   } catch (e: any) {
+    // [TEMP DEBUG] dump the full error so we can see code + message
+    console.log('[google-debug] sign-in error code =', JSON.stringify(e?.code))
+    console.log('[google-debug] sign-in error message =', JSON.stringify(e?.message))
+    console.log('[google-debug] full error =', JSON.stringify(e, Object.getOwnPropertyNames(e ?? {})))
     try {
       const { statusCodes } = loadGoogle()
       if (e?.code === statusCodes?.SIGN_IN_CANCELLED) return { cancelled: true }

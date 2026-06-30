@@ -18,6 +18,7 @@ export default function AppLayout() {
       {/* Tabs are the main shell — no header (tabs have their own) */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="profile-setup" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       {/* Stack screens pushed on top of tabs */}
       <Stack.Screen name="cards" options={{ headerShown: true, title: 'Browse Cards' }} />
       <Stack.Screen name="trades" options={{ headerShown: true, title: 'For trade' }} />

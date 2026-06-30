@@ -115,9 +115,9 @@ Matches are **computed by query, never stored.**
 
 Mobile UI testing was not possible on the current work laptop due to corporate SSL inspection causing `--force` installs which produced a slightly inconsistent `node_modules` tree. The app code itself compiles cleanly (`npx tsc --noEmit` passes); the issue is purely runtime-environmental. When tested from a clean machine (personal Mac or after IT installs the corporate CA cert via `NODE_EXTRA_CA_CERTS`), the app should run as expected.
 | 6 | Matching screen | ✅ Done (verified 2026-06-26) | Client-side matching (`lib/matches.ts`): your wantlist ∩ nearby public `binder_items` + nearby wants ∩ your public binders → strength + distance sort. `matches.tsx` + Trade-tab entry. |
-| 7 | Push notifications | 🟡 Groundwork done (2026-06-26) | `push_tokens` table + `send_push()` + Postgres triggers POST to Expo via `pg_net` (migration 0018): new message/proposal/inquiry → other party; proposal accept/decline → proposer. App registers token on login (`lib/push.ts`). **Fires only on a dev/prod build, not Expo Go.** Nearby-match radar push still TODO. |
+| 7 | Push notifications | ✅ Done (2026-06-28) | `push_tokens` table + `send_push()` + Postgres triggers POST to Expo via `pg_net` (migration 0018): new message/proposal/inquiry → other party; proposal accept/decline → proposer. App registers token on login (`lib/push.ts`). **Fires only on a dev/prod build, not Expo Go.** **Nearby-match radar push done** (migration 0020): adding a card to a public binder notifies nearby wanters ("@owner near you listed CARD") via `radar_recipients()` + 25 km earthdistance. |
 | 8 | Messaging + trades | ✅ Done (verified 2026-06-26) | Inquire-first flow + 1:1 chat (polled, 4s). **Structured proposals** (give/get cards + cash, migration 0015) shown as proposal cards with Accept/Decline. **Card-context requests** as in-chat card messages, 3-per-card cap (migration 0017). Messages tab + inbox. Full loop (request → propose → accept → reply) verified via `scripts/fake-trader-reply.ts`. Tables: trades/messages (0014). |
-| 9 | Polish + launch | 🟡 Partial | Phosphor-green design system applied to all screens. **Dev build path set up** (keyboard-controller + `eas.json` + `expo-dev-client`) — needed for keyboard + push. **Social sign-in app code done (2026-06-28)** — native Apple + Google via Supabase `signInWithIdToken` (`lib/social-auth.ts` + `login.tsx`, hidden in Expo Go); external OAuth config still pending, see `doc/social-signin-setup.md`. Still to do: real app icon/splash, store submission, onboard first players. |
+| 9 | Polish + launch | 🟡 Partial | Phosphor-green design system applied to all screens. **Dev build path set up** (keyboard-controller + `eas.json` + `expo-dev-client`) — needed for keyboard + push. **Social sign-in app code done (2026-06-28)** — native Apple + Google via Supabase `signInWithIdToken` (`lib/social-auth.ts` + `login.tsx`, hidden in Expo Go); external OAuth config still pending, see `doc/social-signin-setup.md`. **Account deletion** RPC (migration 0019, Apple 5.1.1(v)). **City label** display (migration 0021, on-device reverse-geocode; stored coords stay rounded). **Onboarding wizard done (2026-06-28)** — guided post-signup flow (`app/(app)/onboarding.tsx`): welcome → add wishlist → add trade cards (lazily creates a public "For Trade" binder, NM/qty 1) → recap. Skippable; `GetOnRadar` checklist remains the fallback. Still to do: real app icon/splash, store submission, onboard first players. |
 
 ## Session log — 2026-06-26
 
@@ -128,9 +128,21 @@ Big day. Verified the app runs on device (Android, Expo Go) and shipped the trad
 - **Push groundwork (M7)** — `push_tokens` + `pg_net` triggers + token registration (fires on dev build only).
 - **Keyboard** — moved to `react-native-keyboard-controller` (guarded so Expo Go still runs); proper fix activates on the dev build.
 
-**Migrations now go to 0018** — all applied to Supabase this session (0011 reorder, 0012 dup, 0013 cover, 0014 trades, 0015 proposals, 0016 about-card [superseded by 0017], 0017 inquiry msgs, 0018 push). **0018 still pending apply at session end — confirm it's run.**
+**Migrations now go to 0021** — through 0018 applied 2026-06-26 (0011 reorder, 0012 dup, 0013 cover, 0014 trades, 0015 proposals, 0016 about-card [superseded by 0017], 0017 inquiry msgs, 0018 push). Added since: **0019** delete-account RPC, **0020** radar push (`radar_recipients` + trigger on public `binder_items`), **0021** `profiles.city`. **Confirm 0019–0021 are applied in Supabase.**
 
 **Next:** do the **EAS dev build** (`eas build --profile development --platform android`) → fixes keyboard + enables push. Then build the nearby-match radar push + onboarding nudge. Apple Dev + Google Play accounts still not set up.
+
+## Session log — 2026-06-28
+
+- **Nearby-match radar push (M7 follow-up)** — migration 0020: adding a card to a public binder pings nearby wanters via `radar_recipients()` + 25 km earthdistance. Closes the last M7 item → M7 now ✅.
+- **Account deletion** — migration 0019: `delete_my_account()` security-definer RPC (Apple 5.1.1(v)); FK cascade wipes all owned rows.
+- **City label** — migration 0021 + reverse-geocode in `profile-setup.tsx`; stored lat/lng stay rounded, city is display-only and not in `public_profiles`.
+- **Native social sign-in** — Apple + Google via Supabase `signInWithIdToken` (`lib/social-auth.ts` + `login.tsx`); external OAuth config still pending (`doc/social-signin-setup.md`).
+- **Onboarding wizard** — new `app/(app)/onboarding.tsx`: `profile-setup` now hands off here. Welcome → wishlist (`CardPicker` → `addToWantlist`) → trade cards (`CardPicker` allowMultiple → lazily creates a public "For Trade" binder, then `addCardsToBinder` at NM/qty 1) → recap. Skippable with nudge; `GetOnRadar` checklist stays as the fallback. Reuses existing components — no migration, no new deps. `tsc --noEmit` clean; **not yet device-tested.**
+
+**Migrations now go to 0021** (0019 delete-account, 0020 radar push, 0021 city). **Confirm 0019–0021 applied in Supabase.**
+
+**Next:** EAS dev build to verify push + the onboarding flow on-device; then app icon/splash + store submission.
 
 ## Design system (2026-06-25)
 
@@ -169,7 +181,8 @@ Bottom tab bar (**4 tabs**, Messages added 2026-06-26) → stack screens push on
 | New binder | `binders/new.tsx` | `?type=trade\|collection`. Defaults public for trade, private for collection. |
 | Binder detail | `binders/[id].tsx` | Cover + name header; 3×3 grid; add (qty), reorder, edit-mode delete, ••• menu. |
 | Wantlist / Add | `wantlist/index.tsx`, `wantlist/add.tsx` | Full wantlist mgmt + card search add. |
-| Profile setup | `profile-setup.tsx` | Onboarding: handle + location. Shown once on first login. |
+| Profile setup | `profile-setup.tsx` | Onboarding: handle + location. Shown once on first login → hands off to the onboarding wizard. |
+| Onboarding | `onboarding.tsx` | Post-signup guided wizard: welcome → add wishlist → add trade cards (lazily creates a public "For Trade" binder) → recap. Skippable; runs once after profile setup. |
 | Matches | `matches.tsx` | Nearby traders you overlap with (you-get / you-give + strength). |
 | Card detail | `card/[id].tsx` | Card + "available near you" holders, each with a **Request** button. |
 | Trader profile | `trader/[handle].tsx` | A trader's public cards + wants; **Inquire** to open a chat. |
@@ -178,8 +191,9 @@ Bottom tab bar (**4 tabs**, Messages added 2026-06-26) → stack screens push on
 | For trade / Invite | `trades.tsx`, `invite.tsx` | My public cards grid · invite/share. |
 
 ### Pending screens (not built yet)
-- **Onboarding trade binder prompt** — nudge new users to create their first trade binder after profile setup
-- **Nearby-match radar push** — the proactive "someone near you wants your card" notification (M7 follow-up)
+- ~~**Onboarding trade binder prompt**~~ — ✅ Built 2026-06-28 as the post-signup onboarding wizard (`app/(app)/onboarding.tsx`).
+- ~~**Nearby-match radar push**~~ — ✅ Done (migration 0020); fires on a dev/prod build only.
+- *(none outstanding — remaining M9 work is assets + store submission, not screens)*
 
 ---
 

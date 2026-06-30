@@ -137,3 +137,8 @@ eas build --profile development --platform ios
 - **Consent screen in Testing** blocks non-test-user Google accounts — add testers or publish it.
 - **SHA‑1 mismatch** is the #1 Android failure (`DEVELOPER_ERROR`) — the build's keystore SHA‑1 must be in the Android OAuth client.
 - **App Store rule 4.8:** if you offer Google sign-in on iOS you must also offer Apple — that's why we ship both.
+- **`EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in production builds.** Dev builds read `.env.local` from your local Metro server, so the client ID is present when testing. But a **production/preview** build bundles JS in the cloud where `.env.local` doesn't exist → the ID comes out `undefined` and Google sign-in fails silently. Register it as an EAS env var before a store build:
+  ```
+  eas env:create --name EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID --value <web-client-id> --environment production --visibility plaintext
+  ```
+  (Do the same for the Supabase URL/anon key and, later, the iOS client ID.)

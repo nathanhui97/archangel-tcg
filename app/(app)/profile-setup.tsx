@@ -154,7 +154,7 @@ export default function ProfileSetupScreen() {
           .maybeSingle()
         if (mine) {
           await refreshProfile()
-          router.replace('/(app)/(tabs)/trade')
+          router.replace('/(app)/onboarding')
           return
         }
         setHandleStatus('taken')
