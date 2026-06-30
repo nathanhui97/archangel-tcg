@@ -81,7 +81,7 @@ export default function TradeScreen() {
       <View className="mx-5 flex-row bg-surface border border-subtle rounded-xl p-0.5">
         {([
           { key: 'listed', label: 'Listed for Trade' },
-          { key: 'wishlist', label: 'Wishlist' },
+          { key: 'wishlist', label: 'Wantlist' },
         ] as const).map((s) => {
           const active = segment === s.key
           return (

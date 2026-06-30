@@ -40,12 +40,14 @@ function cardCode(g: CardGroup): string {
   return [g.card_set_code, g.card_number].filter(Boolean).join('-') || g.card_id
 }
 
-/** Closest wanter caption, e.g. "@nova_li · 1.2km". */
-function nearestLabel(g: CardGroup): string {
-  const sorted = [...g.wanters].sort((a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity))
-  const n = sorted[0]
-  if (!n) return ''
-  return `@${n.handle} · ${n.distance_km !== null ? `${n.distance_km}km` : 'ships'}`
+/** Nearest wanter (closest first). */
+function nearestWanter(g: CardGroup) {
+  return [...g.wanters].sort((a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity))[0] ?? null
+}
+
+/** Shared distance format, matching ListedForTradeList: "1.2 km" / "Ships". */
+function distanceLabel(km: number | null): string {
+  return km !== null ? `${km} km` : 'Ships'
 }
 
 type Props = {
@@ -93,24 +95,28 @@ export function WishlistList({ lat, lng, radiusKm, game, search }: Props) {
       columnWrapperStyle={{ gap: 10, paddingHorizontal: 20 }}
       contentContainerStyle={{ gap: 14, paddingTop: 8, paddingBottom: 20 }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />}
-      renderItem={({ item }) => (
-        <CardTile
-          width={tileW}
-          uri={item.card_image_url}
-          topRight={
-            <View className="bg-primary rounded px-1.5 py-0.5">
-              <Text className="text-primary-ink font-mono-bold text-[10px]">{item.wanters.length} want</Text>
-            </View>
-          }
-          title={cardCode(item)}
-          subtitle={nearestLabel(item)}
-          onPress={() => router.push({ pathname: '/(app)/card/[id]', params: { id: item.card_id } })}
-        />
-      )}
+      renderItem={({ item }) => {
+        const n = nearestWanter(item)
+        return (
+          <CardTile
+            width={tileW}
+            uri={item.card_image_url}
+            topRight={
+              <View className="bg-primary rounded px-1.5 py-0.5">
+                <Text className="text-primary-ink font-mono-bold text-[10px]">{item.wanters.length} want</Text>
+              </View>
+            }
+            title={n ? `@${n.handle}` : ''}
+            titleClassName="text-muted-2 font-mono text-[11px]"
+            subtitle={n ? distanceLabel(n.distance_km) : undefined}
+            onPress={() => router.push({ pathname: '/(app)/card/[id]', params: { id: item.card_id } })}
+          />
+        )
+      }}
       ListEmptyComponent={
         <View className="items-center pt-16 px-8">
           <RadarLogo size={120} animated />
-          <Text className="text-ink font-display-semibold text-base mt-6">No wishlists nearby</Text>
+          <Text className="text-ink font-display-semibold text-base mt-6">No wantlists nearby</Text>
           <Text className="text-muted text-sm mt-2 text-center font-display">
             No one within {radiusKm} km is hunting cards yet. Widen your range to see more demand.
           </Text>

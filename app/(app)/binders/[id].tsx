@@ -9,6 +9,7 @@ import {
   Alert,
   useWindowDimensions,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import {
@@ -71,6 +72,7 @@ function CardFace({ item, width, height }: { item: BinderItem; width: number; he
 
 export default function BinderDetailScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { session } = useAuth()
   const { binder, items, loading, error, refresh } = useBinder(id)
@@ -310,7 +312,7 @@ export default function BinderDetailScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
           {isOwner ? (
             <DraggableCardGrid
               items={items}

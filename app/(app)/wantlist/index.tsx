@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import {
   View,
   Text,
@@ -7,10 +7,12 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack, Link, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useMyWantlist, removeFromWantlist } from '@/lib/wantlist'
 import { CardThumb } from '@/components/ui'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { colors } from '@/lib/theme'
 
 function AddPill() {
@@ -25,7 +27,9 @@ function AddPill() {
 }
 
 export default function WantlistScreen() {
+  const insets = useSafeAreaInsets()
   const { items, loading, error, refresh } = useMyWantlist()
+  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null)
 
   // Refetch when this screen regains focus (e.g. after adding cards on the picker).
   useFocusEffect(
@@ -34,22 +38,16 @@ export default function WantlistScreen() {
     }, [refresh])
   )
 
-  function confirmRemove(itemId: string, name: string) {
-    Alert.alert(`Remove ${name}?`, undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await removeFromWantlist(itemId)
-            refresh()
-          } catch (err) {
-            Alert.alert('Error', (err as Error).message)
-          }
-        },
-      },
-    ])
+  async function doRemove() {
+    if (!removing) return
+    const { id } = removing
+    setRemoving(null)
+    try {
+      await removeFromWantlist(id)
+      refresh()
+    } catch (err) {
+      Alert.alert('Error', (err as Error).message)
+    }
   }
 
   return (
@@ -68,7 +66,7 @@ export default function WantlistScreen() {
         <FlatList
           data={items}
           keyExtractor={(it) => it.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: insets.bottom + 24 }}
           ItemSeparatorComponent={() => <View className="h-px bg-hair my-2.5" />}
           ListEmptyComponent={
             <View className="items-center py-16 px-6">
@@ -98,21 +96,33 @@ export default function WantlistScreen() {
             const card = item.card
             return (
               <Pressable
-                onLongPress={() => confirmRemove(item.id, card?.name ?? 'this card')}
+                onLongPress={() => setRemoving({ id: item.id, name: card?.name ?? 'this card' })}
                 className="flex-row items-center active:opacity-70"
               >
                 <CardThumb uri={card?.image_url} className="w-12 h-[67px]" radius="rounded-lg" />
                 <View className="flex-1 ml-3">
-                  <Text className="text-ink font-mono-bold text-[15px]">{item.card_id}</Text>
-                  {card?.set_name && (
-                    <Text numberOfLines={1} className="text-muted text-xs mt-1 font-display">{card.set_name}</Text>
-                  )}
+                  <Text numberOfLines={1} className="text-ink font-display-semibold text-[15px]">
+                    {card?.name ?? item.card_id}
+                  </Text>
+                  <Text numberOfLines={1} className="text-muted text-xs mt-1 font-mono">
+                    {[card?.set_name, item.card_id].filter(Boolean).join(' · ')}
+                  </Text>
                 </View>
               </Pressable>
             )
           }}
         />
       )}
+
+      <ConfirmDialog
+        visible={!!removing}
+        title={`Remove ${removing?.name ?? 'this card'}?`}
+        message="It'll come off your wantlist and stop matching."
+        confirmLabel="Remove"
+        destructive
+        onConfirm={doRemove}
+        onCancel={() => setRemoving(null)}
+      />
     </View>
   )
 }

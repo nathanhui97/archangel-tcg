@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { View, Text, Pressable, FlatList, ActivityIndicator, Alert } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack, useRouter, Link } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useMyBinders, deleteBinder } from '@/lib/binders'
 import { PressRow, StatusDot } from '@/components/ui'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { colors } from '@/lib/theme'
 
 function NewPill() {
@@ -18,28 +21,20 @@ function NewPill() {
 
 export default function BindersListScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { binders, loading, error, refresh } = useMyBinders()
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null)
 
-  function confirmDelete(id: string, name: string) {
-    Alert.alert(
-      `Delete ${name}?`,
-      'This removes the binder and every card inside it. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteBinder(id)
-              refresh()
-            } catch (err) {
-              Alert.alert('Error', (err as Error).message)
-            }
-          },
-        },
-      ]
-    )
+  async function doDelete() {
+    if (!deleting) return
+    const { id } = deleting
+    setDeleting(null)
+    try {
+      await deleteBinder(id)
+      refresh()
+    } catch (err) {
+      Alert.alert('Error', (err as Error).message)
+    }
   }
 
   return (
@@ -58,7 +53,7 @@ export default function BindersListScreen() {
         <FlatList
           data={binders}
           keyExtractor={(b) => b.id}
-          contentContainerStyle={{ padding: 20 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: insets.bottom + 24 }}
           ItemSeparatorComponent={() => <View className="h-2.5" />}
           ListEmptyComponent={
             <View className="items-center py-16 px-6">
@@ -76,10 +71,18 @@ export default function BindersListScreen() {
               </Link>
             </View>
           }
+          ListFooterComponent={
+            binders.length > 0 ? (
+              <View className="flex-row items-center justify-center gap-1.5 mt-6">
+                <Ionicons name="information-circle-outline" size={13} color={colors.faint} />
+                <Text className="text-faint text-xs font-display">Long-press a binder to delete</Text>
+              </View>
+            ) : null
+          }
           renderItem={({ item }) => (
             <PressRow
               onPress={() => router.push(`/(app)/binders/${item.id}`)}
-              onLongPress={() => confirmDelete(item.id, item.name)}
+              onLongPress={() => setDeleting({ id: item.id, name: item.name })}
               className="p-4"
             >
               <View className="flex-row items-center justify-between">
@@ -95,6 +98,16 @@ export default function BindersListScreen() {
           )}
         />
       )}
+
+      <ConfirmDialog
+        visible={!!deleting}
+        title={`Delete ${deleting?.name ?? 'this binder'}?`}
+        message="This removes the binder and every card inside it. This can't be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={doDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </View>
   )
 }
