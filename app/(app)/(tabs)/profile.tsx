@@ -37,7 +37,10 @@ export default function ProfileScreen() {
   async function handleDeleteAccount() {
     setDeleting(true)
     try {
-      await deleteMyAccount() // also clears the local session; AuthGate redirects to landing
+      await deleteMyAccount()
+      setConfirmDelete(false)
+      // signOut clears auth state synchronously; AuthGate then routes to landing.
+      await signOut()
     } catch (err) {
       setDeleting(false)
       setConfirmDelete(false)
@@ -264,6 +267,7 @@ export default function ProfileScreen() {
         message="This permanently deletes your profile, binders, wantlist, and trades. This can't be undone."
         confirmLabel={deleting ? 'Deleting…' : 'Delete'}
         destructive
+        requireText="delete"
         onConfirm={handleDeleteAccount}
         onCancel={() => !deleting && setConfirmDelete(false)}
       />

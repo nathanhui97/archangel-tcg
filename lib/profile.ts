@@ -36,13 +36,12 @@ export async function updateProfile(
   if (error) throw new Error(error.message)
 }
 
-/** Permanently delete the signed-in user's account and all their data. */
+/**
+ * Permanently delete the signed-in user's account and all their data.
+ * The caller must then sign out (via the auth context) to tear down the now-dead
+ * session — that clears auth state synchronously so AuthGate routes to landing.
+ */
 export async function deleteMyAccount(): Promise<void> {
   const { error } = await supabase.rpc('delete_my_account')
   if (error) throw new Error(error.message)
-  // The auth user (and its server-side session) is gone now. A normal global
-  // sign-out would POST to revoke a session that no longer exists and fail,
-  // leaving a dead-but-present session that loops the AuthGate. Clear it
-  // LOCALLY only so the teardown is clean and deterministic.
-  await supabase.auth.signOut({ scope: 'local' })
 }

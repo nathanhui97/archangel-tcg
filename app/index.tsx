@@ -1,11 +1,13 @@
 import { View, Text } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { RadarLogo } from '@/components/ui/RadarLogo'
 import { Button } from '@/components/ui'
 import { colors } from '@/lib/theme'
 
 export default function LandingScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   return (
     <View className="flex-1 bg-bg items-center justify-center px-7">
       {/* radial green glow + radar */}
@@ -24,7 +26,10 @@ export default function LandingScreen() {
         <Button title="Get Started" onPress={() => router.push('/(auth)/login')} trailing={<Text className="text-primary-ink font-mono-bold text-base">→</Text>} />
       </View>
 
-      <Text className="absolute bottom-12 font-mono-medium text-[11px] tracking-[0.14em] text-faint">
+      <Text
+        style={{ bottom: insets.bottom + 20 }}
+        className="absolute font-mono-medium text-[11px] tracking-[0.14em] text-faint"
+      >
         GUNDAM CARD GAME · LOCAL TRADES
       </Text>
     </View>

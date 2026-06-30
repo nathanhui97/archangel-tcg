@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useEffect, useRef } from 'react'
 import { View, ActivityIndicator } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context'
 import { KeyboardProviderCompat } from '@/components/KeyboardCompat'
 import {
   useFonts,
@@ -24,11 +25,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { session, loading, hasProfile } = useAuth()
   const segments = useSegments()
   const router = useRouter()
-  // Remember the last target we navigated to. The protected (app) tree contains
-  // its own declarative <Redirect> (app/(app)/index.tsx) and re-renders on every
-  // auth-state change, so without this guard the effect can fire router.replace
-  // repeatedly for the same target while navigation is still settling — an
-  // infinite update loop (e.g. right after deleting the account).
+  // Remember the last target we navigated to. The protected (app) tree re-renders
+  // on every auth-state change, so without this guard the effect can fire
+  // router.replace repeatedly for the same target while navigation is still
+  // settling — an infinite update loop (e.g. right after deleting the account).
   const lastTarget = useRef<Href | null>(null)
 
   useEffect(() => {
@@ -46,7 +46,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return // profile check still in flight; don't move yet
     } else if (hasProfile) {
       // Has profile — if they're on landing/auth, send them into the app.
-      if (!inAppGroup) target = '/(app)'
+      // Target the tabs directly: there's no (app) index route (it conflicted
+      // with the landing at "/"), so we navigate straight to the main shell.
+      if (!inAppGroup) target = '/(app)/(tabs)/trade'
     } else {
       // No profile yet — force profile-setup.
       if (seg !== '(app)/profile-setup') target = '/(app)/profile-setup'
@@ -96,25 +98,27 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <KeyboardProviderCompat>
-        <AuthProvider>
-          <AuthGate>
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: colors.bg },
-              headerTintColor: colors.ink,
-              contentStyle: { backgroundColor: colors.bg },
-              animation: 'slide_from_right',
-            }}
-          >
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(app)" options={{ headerShown: false }} />
-          </Stack>
-        </AuthGate>
-        <StatusBar style="light" />
-      </AuthProvider>
-      </KeyboardProviderCompat>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <KeyboardProviderCompat>
+          <AuthProvider>
+            <AuthGate>
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: colors.bg },
+                headerTintColor: colors.ink,
+                contentStyle: { backgroundColor: colors.bg },
+                animation: 'slide_from_right',
+              }}
+            >
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(app)" options={{ headerShown: false }} />
+            </Stack>
+          </AuthGate>
+          <StatusBar style="light" />
+        </AuthProvider>
+        </KeyboardProviderCompat>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   )
 }

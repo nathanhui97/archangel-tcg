@@ -6,6 +6,7 @@ export type CardFilters = {
   setCode: string | null
   color: string | null
   cardType: string | null
+  altArtOnly: boolean
 }
 
 type Props = {
@@ -44,7 +45,7 @@ function FilterGroup({
 /** Bottom sheet for filtering the card catalog by set, color, and card type. */
 export function CardFilterSheet({ visible, onClose, sets, colors, cardTypes, value, onChange }: Props) {
   const insets = useSafeAreaInsets()
-  const activeCount = [value.setCode, value.color, value.cardType].filter(Boolean).length
+  const activeCount = [value.setCode, value.color, value.cardType, value.altArtOnly || null].filter(Boolean).length
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -59,13 +60,24 @@ export function CardFilterSheet({ visible, onClose, sets, colors, cardTypes, val
           <View className="flex-row items-center justify-between mb-5">
             <Text className="text-ink text-lg font-display-bold">Filters</Text>
             {activeCount > 0 && (
-              <Pressable onPress={() => onChange({ setCode: null, color: null, cardType: null })} className="active:opacity-60">
+              <Pressable onPress={() => onChange({ setCode: null, color: null, cardType: null, altArtOnly: false })} className="active:opacity-60">
                 <Text className="text-primary text-sm font-display-medium">Clear all</Text>
               </Pressable>
             )}
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
+            <View className="mb-5">
+              <MonoLabel className="mb-2.5">ART</MonoLabel>
+              <View className="flex-row flex-wrap gap-2">
+                <Chip
+                  label="Alt art only"
+                  active={value.altArtOnly}
+                  onPress={() => onChange({ ...value, altArtOnly: !value.altArtOnly })}
+                />
+              </View>
+            </View>
+
             <FilterGroup
               label="SET"
               options={sets.map((s) => ({ key: s.code, label: s.code }))}

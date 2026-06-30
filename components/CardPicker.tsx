@@ -54,7 +54,7 @@ export function CardPicker({
 
   const [query, setQuery] = useState('')
   const [game, setGame] = useState<string | null>(defaultGame)
-  const [filters, setFilters] = useState<CardFilters>({ setCode: null, color: null, cardType: null })
+  const [filters, setFilters] = useState<CardFilters>({ setCode: null, color: null, cardType: null, altArtOnly: false })
   const [filterOpen, setFilterOpen] = useState(false)
   const [counts, setCounts] = useState<Map<string, number>>(new Map())
   const [facets, setFacets] = useState<{ sets: { code: string; name: string }[]; colors: string[]; cardTypes: string[] }>({
@@ -67,13 +67,14 @@ export function CardPicker({
     setCode: filters.setCode,
     color: filters.color,
     cardType: filters.cardType,
+    altArtOnly: filters.altArtOnly,
     limit: 60,
   })
 
   // Load filter facets for the chosen game (sets/colors/types come from the scrape).
   useEffect(() => {
     let active = true
-    setFilters({ setCode: null, color: null, cardType: null })
+    setFilters({ setCode: null, color: null, cardType: null, altArtOnly: false })
     if (!game) {
       setFacets({ sets: [], colors: [], cardTypes: [] })
       return
@@ -86,7 +87,7 @@ export function CardPicker({
     }
   }, [game])
 
-  const activeFilters = [filters.setCode, filters.color, filters.cardType].filter(Boolean).length
+  const activeFilters = [filters.setCode, filters.color, filters.cardType, filters.altArtOnly || null].filter(Boolean).length
 
   function tapCard(cardId: string) {
     setCounts((prev) => {
@@ -231,6 +232,14 @@ export function CardPicker({
                 subtitle={<Text className="text-muted text-[10px] font-mono mt-0.5" numberOfLines={1}>{item.id}</Text>}
                 selected={!allowMultiple && itemCount > 0}
                 count={allowMultiple ? itemCount : undefined}
+                topLeft={
+                  item.is_alt_art ? (
+                    <View className="flex-row items-center gap-0.5 bg-primary rounded px-1.5 py-0.5">
+                      <Ionicons name="sparkles" size={8} color={colors.primaryInk} />
+                      <Text className="text-primary-ink font-mono-bold text-[9px] tracking-wider">ALT</Text>
+                    </View>
+                  ) : undefined
+                }
                 topRight={
                   isAdded ? (
                     <View className="bg-surface-control rounded px-1.5 py-0.5">

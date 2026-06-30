@@ -37,23 +37,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    // Clear local auth state synchronously so AuthGate reacts on the very next
+    // render. Waiting for the async onAuthStateChange round-trip leaves a gap
+    // where the gate still sees the old session and bounces a just-signed-out
+    // user back into the app (blank screen after account deletion).
+    setSession(null)
     setHasProfile(null)
+    // scope:'local' never hits the network — safe even when the user was just
+    // deleted server-side (a global revoke would fail on a dead session).
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
   }
 
   useEffect(() => {
     let mounted = true
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return
-      setSession(data.session)
-      if (data.session) {
-        checkProfile(data.session.user.id).finally(() => {
-          if (mounted) setLoading(false)
-        })
-      } else {
+      if (!data.session) {
         setLoading(false)
+        return
       }
+      // Validate the stored session against the server. Deleting an account
+      // leaves a stale local session whose user no longer exists; without this
+      // it resurrects on next launch as a broken "signed-in, no profile" state
+      // that dead-ends at profile-setup. A definitive auth error (401/403) means
+      // the user is gone → sign out. Network/transient errors are ignored so a
+      // genuinely valid session survives being briefly offline.
+      const { error } = await supabase.auth.getUser()
+      if (!mounted) return
+      if (error && (error.status === 401 || error.status === 403)) {
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+        setSession(null)
+        setHasProfile(null)
+        setLoading(false)
+        return
+      }
+      setSession(data.session)
+      checkProfile(data.session.user.id).finally(() => {
+        if (mounted) setLoading(false)
+      })
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {

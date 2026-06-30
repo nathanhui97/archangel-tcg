@@ -6,6 +6,7 @@ import {
   Pressable,
   Switch,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Card, Condition } from '@/types'
 import { Button, MonoLabel, CardThumb } from '@/components/ui'
 import { colors } from '@/lib/theme'
@@ -26,6 +27,7 @@ type Props = {
 }
 
 export function AddToBinderSheet({ card, binderName, onCancel, onConfirm }: Props) {
+  const insets = useSafeAreaInsets()
   const [quantity, setQuantity] = useState(1)
   const [condition, setCondition] = useState<Condition>('NM')
   const [isFoil, setIsFoil] = useState(false)
@@ -53,7 +55,8 @@ export function AddToBinderSheet({ card, binderName, onCancel, onConfirm }: Prop
       <Pressable onPress={onCancel} className="flex-1 justify-end" style={{ backgroundColor: 'rgba(2,4,3,0.55)' }}>
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className="bg-surface-sheet rounded-t-[26px] border-t border-primary-soft px-6 pt-3 pb-10"
+          style={{ paddingBottom: insets.bottom + 20 }}
+          className="bg-surface-sheet rounded-t-[26px] border-t border-primary-soft px-6 pt-3"
         >
           {/* grab handle */}
           <View className="self-center w-9 h-1 rounded-full bg-track mb-5" />

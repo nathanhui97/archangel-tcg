@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { View, Text, Pressable } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { View, Text, Pressable, ScrollView } from 'react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { CardPicker } from '@/components/CardPicker'
@@ -73,7 +73,7 @@ export default function OnboardingScreen() {
         <CardStep stepIndex={0}>
           <CardPicker
             key={`wish-${defaultGame ?? 'all'}`}
-            title="What cards are you hunting?"
+            title="What cards are you looking for?"
             subtitle="Add a few — we'll ping you when one's nearby."
             addNoun="wishlist"
             addedIds={wantedIds}
@@ -92,7 +92,7 @@ export default function OnboardingScreen() {
         <CardStep stepIndex={1}>
           <CardPicker
             key={`trade-${defaultGame ?? 'all'}`}
-            title="What will you trade?"
+            title="What cards are you trading?"
             subtitle="These appear on nearby traders' radars."
             addNoun="trade binder"
             allowMultiple
@@ -119,9 +119,14 @@ export default function OnboardingScreen() {
 // ─────────────────────────────────────────────────────────────────────────
 
 function WelcomeStep({ onStart, onSkip }: { onStart: () => void; onSkip: () => void }) {
+  const insets = useSafeAreaInsets()
   return (
-    <View className="flex-1 px-7 pt-4">
-      <View className="flex-1 items-center justify-center">
+    <ScrollView
+      className="flex-1"
+      contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 28, paddingTop: 16, paddingBottom: insets.bottom + 16 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View className="flex-1 items-center justify-center py-6">
         <RadarLogo size={120} animated />
         <Text className="text-[26px] font-display-bold text-ink mt-10 text-center">
           Let's get you on the radar
@@ -138,7 +143,7 @@ function WelcomeStep({ onStart, onSkip }: { onStart: () => void; onSkip: () => v
         </View>
       </View>
 
-      <View className="pb-6">
+      <View>
         <Button
           title="Add my cards"
           onPress={onStart}
@@ -148,7 +153,7 @@ function WelcomeStep({ onStart, onSkip }: { onStart: () => void; onSkip: () => v
           <Text className="text-faint text-sm font-display">I'll do this later</Text>
         </Pressable>
       </View>
-    </View>
+    </ScrollView>
   )
 }
 
@@ -196,10 +201,15 @@ function DoneStep({
   tradeAdded: number
   onFinish: () => void
 }) {
+  const insets = useSafeAreaInsets()
   const addedAnything = wishAdded > 0 || tradeAdded > 0
   return (
-    <View className="flex-1 px-7 pt-4">
-      <View className="flex-1 items-center justify-center">
+    <ScrollView
+      className="flex-1"
+      contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 28, paddingTop: 16, paddingBottom: insets.bottom + 16 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View className="flex-1 items-center justify-center py-6">
         <RadarLogo size={120} animated />
         <Text className="text-[26px] font-display-bold text-ink mt-10 text-center">
           {addedAnything ? "You're on the radar" : 'All set'}
@@ -218,14 +228,14 @@ function DoneStep({
         )}
       </View>
 
-      <View className="pb-6">
+      <View>
         <Button
           title="Start trading"
           onPress={onFinish}
           trailing={<Text className="text-primary-ink font-mono-bold text-base">→</Text>}
         />
       </View>
-    </View>
+    </ScrollView>
   )
 }
 

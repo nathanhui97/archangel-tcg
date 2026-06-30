@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { View, Text, FlatList, Pressable, Alert, useWindowDimensions } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useMyProfile } from '@/lib/profile'
 import { useNearbyCards, useNearbyWantlists } from '@/lib/nearby'
@@ -16,6 +17,7 @@ type Segment = 'wants' | 'trade'
 
 export default function TraderProfileScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { handle } = useLocalSearchParams<{ handle: string }>()
   const { width } = useWindowDimensions()
   const tileW = gridTileWidth(width)
@@ -156,7 +158,8 @@ export default function TraderProfileScreen() {
 
       {/* Sticky action */}
       <View
-        className="absolute left-0 right-0 bottom-0 px-5 pt-3 pb-8 bg-tabbar border-t border-subtle flex-row gap-3"
+        style={{ paddingBottom: insets.bottom + 12 }}
+        className="absolute left-0 right-0 bottom-0 px-5 pt-3 bg-tabbar border-t border-subtle flex-row gap-3"
       >
         <Pressable
           onPress={handleInquire}

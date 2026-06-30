@@ -50,6 +50,8 @@ export interface Card {
   number: string | null            // "001"
   art_variant: string | null       // null for base print; "p1" / "p2" for alt arts
   base_card_id: string | null      // "GD01-001" — same for all prints of a card
+  is_alt_art: boolean              // derived: art_variant is not null (migration 0022)
+  rarity_rank: number              // derived: higher = rarer, for display sort (migration 0022)
   card_type: CardType | null
 
   // Shared

@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
@@ -26,6 +27,7 @@ type HandleStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
 export default function ProfileSetupScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { session, refreshProfile, signOut } = useAuth()
   const [handle, setHandle] = useState('')
   const [handleStatus, setHandleStatus] = useState<HandleStatus>('idle')
@@ -212,7 +214,7 @@ export default function ProfileSetupScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 32 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 24 }}
         keyboardShouldPersistTaps="handled"
       >
         <View className="flex-1 px-6 pt-12">

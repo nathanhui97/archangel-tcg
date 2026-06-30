@@ -8,6 +8,8 @@ type SearchOptions = {
   setCode?: string | null
   color?: string | null
   cardType?: string | null
+  /** Show only alt-art prints (art_variant is not null). */
+  altArtOnly?: boolean
   limit?: number
 }
 
@@ -24,6 +26,7 @@ export function useCardSearch(query: string, options: SearchOptions = {}) {
     setCode = null,
     color = null,
     cardType = null,
+    altArtOnly = false,
     limit = 30,
   } = options
 
@@ -41,9 +44,13 @@ export function useCardSearch(query: string, options: SearchOptions = {}) {
       setLoading(true)
       setError(null)
 
+      // Display order: alt-arts first, then highest rarity, then newest set —
+      // leads with the "chase" cards so picking feels exciting. (migration 0022)
       let q = supabase
         .from('cards')
         .select('*')
+        .order('is_alt_art', { ascending: false })
+        .order('rarity_rank', { ascending: false })
         .order('set_code', { ascending: false })
         .order('number', { ascending: true })
         .limit(limit)
@@ -59,6 +66,7 @@ export function useCardSearch(query: string, options: SearchOptions = {}) {
       if (setCode) q = q.eq('set_code', setCode)
       if (color) q = q.eq('color', color)
       if (cardType) q = q.eq('card_type', cardType)
+      if (altArtOnly) q = q.eq('is_alt_art', true)
 
       const { data, error: sbError } = await q
 
@@ -77,7 +85,7 @@ export function useCardSearch(query: string, options: SearchOptions = {}) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [query, game, setCode, color, cardType, limit])
+  }, [query, game, setCode, color, cardType, altArtOnly, limit])
 
   return { results, loading, error }
 }
