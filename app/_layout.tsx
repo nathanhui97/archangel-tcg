@@ -1,6 +1,6 @@
-import { Stack, useRouter, useSegments } from 'expo-router'
+import { Stack, useRouter, useSegments, type Href } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { View, ActivityIndicator } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { KeyboardProviderCompat } from '@/components/KeyboardCompat'
@@ -24,30 +24,43 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { session, loading, hasProfile } = useAuth()
   const segments = useSegments()
   const router = useRouter()
+  // Remember the last target we navigated to. The protected (app) tree contains
+  // its own declarative <Redirect> (app/(app)/index.tsx) and re-renders on every
+  // auth-state change, so without this guard the effect can fire router.replace
+  // repeatedly for the same target while navigation is still settling — an
+  // infinite update loop (e.g. right after deleting the account).
+  const lastTarget = useRef<Href | null>(null)
 
   useEffect(() => {
     if (loading) return
 
-    const inAuthGroup = segments[0] === '(auth)'
+    const seg = segments.join('/')
     const inAppGroup = segments[0] === '(app)'
 
+    // Decide where (if anywhere) this auth state requires us to be.
+    let target: Href | null = null
     if (!session) {
-      // Not signed in — push back to the landing screen if they're in protected routes
-      if (inAppGroup) router.replace('/')
-      return
+      // Not signed in — only redirect out of protected routes.
+      if (inAppGroup) target = '/'
+    } else if (hasProfile === null) {
+      return // profile check still in flight; don't move yet
+    } else if (hasProfile) {
+      // Has profile — if they're on landing/auth, send them into the app.
+      if (!inAppGroup) target = '/(app)'
+    } else {
+      // No profile yet — force profile-setup.
+      if (seg !== '(app)/profile-setup') target = '/(app)/profile-setup'
     }
 
-    // Signed in
-    if (hasProfile === null) return  // profile check still in flight
-
-    if (hasProfile) {
-      // Has profile: leave them in the app, but if they're sitting on landing/auth, send them home
-      if (!inAppGroup) router.replace('/(app)')
-    } else {
-      // No profile yet: force them to profile-setup
-      if (segments.join('/') !== '(app)/profile-setup') {
-        router.replace('/(app)/profile-setup')
-      }
+    if (target === null) {
+      // We're where we should be — clear the guard so a future state can navigate.
+      lastTarget.current = null
+      return
+    }
+    // Fire each distinct target only once until it changes or clears.
+    if (lastTarget.current !== target) {
+      lastTarget.current = target
+      router.replace(target)
     }
   }, [session, loading, hasProfile, segments, router])
 

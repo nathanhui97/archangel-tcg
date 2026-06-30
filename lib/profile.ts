@@ -28,7 +28,7 @@ export function useMyProfile() {
 }
 
 export async function updateProfile(
-  updates: Partial<Pick<Profile, 'willing_to_ship'>>
+  updates: Partial<Pick<Profile, 'willing_to_ship' | 'lat' | 'lng' | 'city' | 'games'>>
 ): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not signed in')
@@ -40,4 +40,9 @@ export async function updateProfile(
 export async function deleteMyAccount(): Promise<void> {
   const { error } = await supabase.rpc('delete_my_account')
   if (error) throw new Error(error.message)
+  // The auth user (and its server-side session) is gone now. A normal global
+  // sign-out would POST to revoke a session that no longer exists and fail,
+  // leaving a dead-but-present session that loops the AuthGate. Clear it
+  // LOCALLY only so the teardown is clean and deterministic.
+  await supabase.auth.signOut({ scope: 'local' })
 }

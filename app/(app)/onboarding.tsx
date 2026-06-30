@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { CardPicker } from '@/components/CardPicker'
+import { useMyProfile } from '@/lib/profile'
 import { addToWantlist, useMyWantlist } from '@/lib/wantlist'
 import { createBinder, addCardsToBinder } from '@/lib/binders'
 import { Button, MonoLabel } from '@/components/ui'
@@ -28,6 +29,11 @@ export default function OnboardingScreen() {
   const tradeBinderId = useRef<string | null>(null)
 
   const { cardIds: wantedIds, refresh: refreshWant } = useMyWantlist()
+  const { profile } = useMyProfile()
+  // Open the picker on the game(s) they just chose: one game → that game,
+  // multiple → "All". Falls back to All until the profile loads.
+  const games = profile?.games ?? []
+  const defaultGame = games.length === 1 ? games[0] : null
 
   function finish() {
     router.replace('/(app)/(tabs)/trade')
@@ -64,31 +70,39 @@ export default function OnboardingScreen() {
       )}
 
       {step === 1 && (
-        <CardStep
-          stepIndex={0}
-          added={wishAdded}
-          onNext={() => setStep(2)}
-        >
+        <CardStep stepIndex={0}>
           <CardPicker
-            title="What are you hunting?"
+            key={`wish-${defaultGame ?? 'all'}`}
+            title="What cards are you hunting?"
+            subtitle="Add a few — we'll ping you when one's nearby."
             addNoun="wishlist"
             addedIds={wantedIds}
-            onAdd={addWishlist}
+            defaultGame={defaultGame}
+            onSubmit={async (ids) => {
+              if (ids.length) await addWishlist(ids)
+              setStep(2)
+            }}
+            submitWithLabel={(n) => `Add ${n} & continue`}
+            submitEmptyLabel="Skip for now"
           />
         </CardStep>
       )}
 
       {step === 2 && (
-        <CardStep
-          stepIndex={1}
-          added={tradeAdded}
-          onNext={() => setStep(3)}
-        >
+        <CardStep stepIndex={1}>
           <CardPicker
+            key={`trade-${defaultGame ?? 'all'}`}
             title="What will you trade?"
+            subtitle="These appear on nearby traders' radars."
             addNoun="trade binder"
             allowMultiple
-            onAdd={addTradeCards}
+            defaultGame={defaultGame}
+            onSubmit={async (ids) => {
+              if (ids.length) await addTradeCards(ids)
+              setStep(3)
+            }}
+            submitWithLabel={(n) => `Add ${n} & continue`}
+            submitEmptyLabel="Skip for now"
           />
         </CardStep>
       )}
@@ -153,34 +167,16 @@ function ValueRow({ icon, text }: { icon: any; text: string }) {
 // Steps 1 & 2 — slim wizard chrome wrapping a CardPicker
 // ─────────────────────────────────────────────────────────────────────────
 
-function CardStep({
-  stepIndex,
-  added,
-  onNext,
-  children,
-}: {
-  stepIndex: number
-  added: number
-  onNext: () => void
-  children: React.ReactNode
-}) {
+function CardStep({ stepIndex, children }: { stepIndex: number; children: React.ReactNode }) {
   return (
     <View className="flex-1">
-      <View className="flex-row items-center justify-between px-5 pt-1 pb-3">
-        <View className="flex-row items-center gap-1.5">
-          {[0, 1].map((i) => (
-            <View
-              key={i}
-              className={`h-1.5 rounded-full ${i <= stepIndex ? 'bg-primary w-6' : 'bg-track w-4'}`}
-            />
-          ))}
-        </View>
-        <Pressable onPress={onNext} className="flex-row items-center active:opacity-70 py-1">
-          <Text className="text-primary font-display-semibold text-base">
-            {added > 0 ? 'Next' : 'Skip for now'}
-          </Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-        </Pressable>
+      <View className="flex-row items-center gap-1.5 px-5 pt-2 pb-1">
+        {[0, 1].map((i) => (
+          <View
+            key={i}
+            className={`h-1.5 rounded-full ${i <= stepIndex ? 'bg-primary w-6' : 'bg-track w-4'}`}
+          />
+        ))}
       </View>
       {children}
     </View>

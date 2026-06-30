@@ -47,6 +47,14 @@ export async function signInWithGoogle(): Promise<SocialResult> {
     }
 
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+    // Clear any cached Google session so the account chooser always appears,
+    // instead of silently reusing the last-granted account. This makes sign-in
+    // visible and lets users pick/switch accounts (e.g. after deleting an account).
+    try {
+      await GoogleSignin.signOut()
+    } catch {
+      /* nothing cached — fine */
+    }
     const result = await GoogleSignin.signIn()
 
     // v13+ returns { type: 'success' | 'cancelled', data }; older returns userInfo directly.

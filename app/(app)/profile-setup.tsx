@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -46,6 +46,24 @@ export default function ProfileSetupScreen() {
   }
 
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Seed a handle suggestion from the Google/email name so most users can just
+  // tap through. Sanitised to the handle rules; runs once, and never overwrites
+  // anything the user has typed.
+  const prefilled = useRef(false)
+  useEffect(() => {
+    if (prefilled.current || !session || handle) return
+    const meta = (session.user.user_metadata ?? {}) as Record<string, string>
+    const raw =
+      meta.full_name || meta.name || meta.preferred_username || session.user.email?.split('@')[0] || ''
+    const suggestion = raw.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20)
+    if (suggestion.length >= 3) {
+      prefilled.current = true
+      setHandle(suggestion)
+      setHandleStatus('checking')
+      checkAvailability(suggestion)
+    }
+  }, [session, handle])
 
   function onChangeHandle(text: string) {
     const cleaned = text.replace(/\s/g, '')
@@ -166,7 +184,7 @@ export default function ProfileSetupScreen() {
     }
 
     await refreshProfile()
-    router.replace('/(app)/(tabs)/trade')
+    router.replace('/(app)/onboarding')
   }
 
   function handleHint() {
@@ -259,25 +277,46 @@ export default function ProfileSetupScreen() {
             <Pressable
               onPress={captureLocation}
               disabled={saving || locStatus === 'capturing'}
-              className={`flex-row items-center bg-surface rounded-xl px-4 py-4 border ${
-                locStatus === 'set' ? 'border-subtle' : locStatus === 'denied' ? 'border-danger/35' : 'border-subtle'
-              } active:opacity-80`}
+              className={`flex-row items-center rounded-xl px-4 py-4 border active:opacity-80 ${
+                locStatus === 'set'
+                  ? 'bg-primary/5 border-primary/40'
+                  : locStatus === 'denied'
+                    ? 'border-danger/35 bg-surface'
+                    : 'border-subtle bg-surface'
+              }`}
             >
-              <Ionicons name="location-outline" size={18} color={locStatus === 'set' ? colors.primary : colors.faint2} />
-              <Text className={`flex-1 ml-3 text-base font-display ${locStatus === 'set' ? 'text-ink' : 'text-faint-2'}`}>
-                {locStatus === 'set'
-                  ? city ?? 'Your area is set'
-                  : locStatus === 'capturing'
-                    ? 'Getting your area…'
-                    : locStatus === 'denied'
-                      ? 'Location denied — tap to retry'
-                      : 'Use my approximate location'}
-              </Text>
+              <Ionicons
+                name={locStatus === 'set' ? 'location' : 'location-outline'}
+                size={18}
+                color={locStatus === 'set' ? colors.primary : colors.faint2}
+              />
+              <View className="flex-1 ml-3">
+                {locStatus === 'set' ? (
+                  <>
+                    <Text className="text-base font-display-semibold text-ink">
+                      {city ?? 'Your area is set'}
+                    </Text>
+                    <Text className="text-primary text-xs mt-0.5 font-display">
+                      Located from your current position · tap to update
+                    </Text>
+                  </>
+                ) : (
+                  <Text className="text-base font-display text-faint-2">
+                    {locStatus === 'capturing'
+                      ? 'Getting your area…'
+                      : locStatus === 'denied'
+                        ? 'Location denied — tap to retry'
+                        : 'Use my approximate location'}
+                  </Text>
+                )}
+              </View>
               {locStatus === 'capturing' ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : locStatus === 'set' ? (
-                <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-              ) : null}
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+              ) : (
+                <Ionicons name="chevron-forward" size={16} color={colors.faint2} />
+              )}
             </Pressable>
             <Text className="text-faint text-xs mt-2 font-display">
               Only your general area is shared with nearby traders — never a precise address.

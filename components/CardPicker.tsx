@@ -20,23 +20,40 @@ const GAME_OPTIONS: { label: string; value: string | null }[] = [
 type Props = {
   /** Header title, e.g. "Add to Gundam Trade Binder" or "Add to wantlist". */
   title?: string
+  /** Optional one-line context under the title. */
+  subtitle?: string
   /** Noun for the add button: `Add N to ${addNoun}`. */
   addNoun?: string
   /** Cards already in the target — shown as "ON LIST" and not selectable. */
   addedIds?: Set<string>
   /** Allow adding multiple copies of the same card (tap = +1, long-press = −1). */
   allowMultiple?: boolean
-  onAdd: (cardIds: string[]) => Promise<void>
+  /** Initial TCG filter. Defaults to Gundam. Pass null for "All". */
+  defaultGame?: string | null
+  /** Default behaviour: add the picked cards (and clear the selection). */
+  onAdd?: (cardIds: string[]) => Promise<void>
+  /**
+   * Single-action mode (onboarding): the sticky button submits AND the caller
+   * navigates away, so the selection is NOT cleared. When provided this
+   * replaces onAdd. With submitEmptyLabel set, the button stays enabled at 0
+   * selected (so it doubles as "Skip"), calling onSubmit([]).
+   */
+  onSubmit?: (cardIds: string[]) => Promise<void> | void
+  submitWithLabel?: (count: number) => string
+  submitEmptyLabel?: string
 }
 
 /** Full-catalog multi-select card picker (Pokémon-Pocket-style "Add to …"). */
-export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, allowMultiple, onAdd }: Props) {
+export function CardPicker({
+  title = 'Add cards', subtitle, addNoun = 'binder', addedIds, allowMultiple,
+  defaultGame = 'gundam', onAdd, onSubmit, submitWithLabel, submitEmptyLabel,
+}: Props) {
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const tileW = gridTileWidth(width)
 
   const [query, setQuery] = useState('')
-  const [game, setGame] = useState<string | null>('gundam')
+  const [game, setGame] = useState<string | null>(defaultGame)
   const [filters, setFilters] = useState<CardFilters>({ setCode: null, color: null, cardType: null })
   const [filterOpen, setFilterOpen] = useState(false)
   const [counts, setCounts] = useState<Map<string, number>>(new Map())
@@ -91,15 +108,19 @@ export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, 
     })
   }
 
-  async function handleAdd() {
-    if (counts.size === 0) return
+  async function handleSubmit() {
+    // Repeat each id by its count so each copy becomes its own entry.
+    const ids: string[] = []
+    for (const [id, n] of counts) for (let i = 0; i < n; i++) ids.push(id)
+    if (!onSubmit && ids.length === 0) return
     setSaving(true)
     try {
-      // Repeat each id by its count so each copy becomes its own entry.
-      const ids: string[] = []
-      for (const [id, n] of counts) for (let i = 0; i < n; i++) ids.push(id)
-      await onAdd(ids)
-      setCounts(new Map())
+      if (onSubmit) {
+        await onSubmit(ids) // caller navigates away — keep selection intact
+      } else {
+        await onAdd?.(ids)
+        setCounts(new Map())
+      }
     } finally {
       setSaving(false)
     }
@@ -108,22 +129,37 @@ export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, 
   let count = 0
   for (const n of counts.values()) count += n
 
+  // The sticky CTA: in onSubmit mode it stays tappable at 0 selected (acts as
+  // "Skip"); otherwise it's disabled until at least one card is picked.
+  const ctaEnabled = (onSubmit ? count > 0 || submitEmptyLabel != null : count > 0) && !saving
+  const ctaLabel =
+    count > 0
+      ? submitWithLabel
+        ? submitWithLabel(count)
+        : `Add ${count} to ${addNoun}`
+      : onSubmit && submitEmptyLabel
+        ? submitEmptyLabel
+        : 'Select cards to add'
+
   const header = useMemo(
     () => (
       <View>
-        <View className="flex-row items-center justify-between px-5 pt-1">
-          <Text className="text-ink text-xl font-display-bold" numberOfLines={1}>
-            {title}
-          </Text>
-          {count > 0 && (
-            <View className="bg-primary/10 border border-primary rounded-lg px-2.5 py-1">
-              <Text className="text-primary font-mono-bold text-xs">{count} selected</Text>
-            </View>
-          )}
+        <View className="px-5 pt-3">
+          <View className="flex-row items-start justify-between">
+            <Text className="text-ink text-[27px] leading-8 font-display-bold flex-1 pr-3" numberOfLines={2}>
+              {title}
+            </Text>
+            {count > 0 && (
+              <View className="bg-primary/10 border border-primary rounded-lg px-2.5 py-1 mt-1">
+                <Text className="text-primary font-mono-bold text-xs">{count} selected</Text>
+              </View>
+            )}
+          </View>
+          {subtitle && <Text className="text-muted text-sm mt-1.5 font-display">{subtitle}</Text>}
         </View>
 
         {allowMultiple && (
-          <Text className="text-faint text-xs px-5 pt-1.5 font-display">
+          <Text className="text-faint text-xs px-5 pt-2 font-display">
             Tap to add a copy · long-press to remove one
           </Text>
         )}
@@ -190,8 +226,9 @@ export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, 
               <CardTile
                 width={tileW}
                 uri={item.image_url}
-                title={item.id}
-                subtitle={item.name}
+                title={item.name}
+                titleClassName="text-ink font-display-semibold text-xs"
+                subtitle={<Text className="text-muted text-[10px] font-mono mt-0.5" numberOfLines={1}>{item.id}</Text>}
                 selected={!allowMultiple && itemCount > 0}
                 count={allowMultiple ? itemCount : undefined}
                 topRight={
@@ -228,16 +265,16 @@ export function CardPicker({ title = 'Add cards', addNoun = 'binder', addedIds, 
         style={{ paddingBottom: insets.bottom + 12 }}
       >
         <Pressable
-          onPress={handleAdd}
-          disabled={count === 0 || saving}
-          style={count > 0 && !saving ? { shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 22, shadowOffset: { width: 0, height: 0 } } : undefined}
-          className={`flex-row items-center justify-center py-4 rounded-2xl ${count > 0 && !saving ? 'bg-primary active:opacity-90' : 'bg-surface-control'}`}
+          onPress={handleSubmit}
+          disabled={!ctaEnabled}
+          style={ctaEnabled ? { shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 22, shadowOffset: { width: 0, height: 0 } } : undefined}
+          className={`flex-row items-center justify-center py-4 rounded-2xl ${ctaEnabled ? 'bg-primary active:opacity-90' : 'bg-surface-control'}`}
         >
           {saving ? (
             <ActivityIndicator color={colors.primaryInk} />
           ) : (
-            <Text className={`font-display-bold text-base ${count > 0 ? 'text-primary-ink' : 'text-faint'}`}>
-              {count > 0 ? `Add ${count} to ${addNoun}` : 'Select cards to add'}
+            <Text className={`font-display-bold text-base ${ctaEnabled ? 'text-primary-ink' : 'text-faint'}`}>
+              {ctaLabel}
             </Text>
           )}
         </Pressable>

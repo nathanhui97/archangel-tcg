@@ -1,9 +1,18 @@
-import { View, Text, Pressable } from 'react-native'
+import { useEffect, useState } from 'react'
+import { View, Text, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native'
 import { useRouter, Link } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { RadarLogo } from '@/components/ui/RadarLogo'
 import { MonoLabel } from '@/components/ui'
+import { secureStorage } from '@/lib/secure-storage'
 import { colors } from '@/lib/theme'
+
+// Enable smooth expand/collapse on Android (no-op on iOS).
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
+
+const STORAGE_KEY = 'getOnRadar.expanded'
 
 type Props = {
   hasLocation: boolean
@@ -44,20 +53,60 @@ function AddBtn({ href, filled }: { href: any; filled?: boolean }) {
   )
 }
 
-/** First-run "Get on the radar" checklist — shown until the user has listed cards + a wantlist. */
+/**
+ * First-run "Get on the radar" checklist. Collapsed to a slim bar by default so
+ * it doesn't dominate the Trade tab before setup is done; tap to expand the full
+ * checklist. The expanded/collapsed choice is remembered across launches.
+ * The parent unmounts this entirely once all three steps are complete.
+ */
 export function GetOnRadar({ hasLocation, hasTradeCards, hasWantlist }: Props) {
   const router = useRouter()
   const done = [hasLocation, hasTradeCards, hasWantlist].filter(Boolean).length
+  const [expanded, setExpanded] = useState(false)
 
+  useEffect(() => {
+    secureStorage.getItem(STORAGE_KEY).then((v) => {
+      if (v === '1') setExpanded(true)
+    })
+  }, [])
+
+  function toggle() {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+    setExpanded((prev) => {
+      const next = !prev
+      secureStorage.setItem(STORAGE_KEY, next ? '1' : '0')
+      return next
+    })
+  }
+
+  // Collapsed — slim one-line bar with progress.
+  if (!expanded) {
+    return (
+      <Pressable
+        onPress={toggle}
+        className="mx-5 mb-3 flex-row items-center bg-surface border border-subtle rounded-2xl px-4 py-3 active:opacity-80"
+      >
+        <RadarLogo size={22} />
+        <Text className="flex-1 ml-3 text-ink font-display-semibold text-sm">Finish getting on the radar</Text>
+        <View className="bg-primary/10 border border-primary-soft rounded-full px-2.5 py-1 mr-2">
+          <Text className="text-primary font-mono-bold text-[11px]">{done} of 3</Text>
+        </View>
+        <Ionicons name="chevron-down" size={18} color={colors.muted2} />
+      </Pressable>
+    )
+  }
+
+  // Expanded — full checklist.
   return (
     <View className="mx-5 mb-3 bg-surface border border-subtle rounded-2xl p-5">
-      <View className="flex-row items-center">
+      <Pressable onPress={toggle} className="flex-row items-center active:opacity-80">
         <RadarLogo size={40} animated />
         <View className="ml-3 flex-1">
           <Text className="text-ink font-display-bold text-base">Get on the radar</Text>
           <Text className="text-muted text-xs mt-0.5 font-display">A couple steps and you'll see trades near you.</Text>
         </View>
-      </View>
+        <Ionicons name="chevron-up" size={18} color={colors.muted2} />
+      </Pressable>
 
       {/* Progress */}
       <View className="flex-row items-center justify-between mt-4 mb-1">
