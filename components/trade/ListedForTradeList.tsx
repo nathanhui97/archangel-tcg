@@ -25,21 +25,30 @@ type Props = {
   radiusKm: number
   game: Game | null
   search: string
+  art: 'alt' | 'base' | null
+  color: string | null
+  cardType: string | null
   wantedIds: Set<string>
 }
 
 /** The "Listed for Trade" segment: nearby cards available to trade, as a 3-col grid. */
-export function ListedForTradeList({ lat, lng, radiusKm, game, search, wantedIds }: Props) {
+export function ListedForTradeList({ lat, lng, radiusKm, game, search, art, color, cardType, wantedIds }: Props) {
   const router = useRouter()
   const { width } = useWindowDimensions()
   const tileW = gridTileWidth(width)
   const { cards, loading, error, refresh } = useNearbyCards(lat, lng, radiusKm, game)
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return cards
-    const q = search.toLowerCase()
-    return cards.filter((c) => c.card_name.toLowerCase().includes(q) || cardCode(c).toLowerCase().includes(q))
-  }, [cards, search])
+    const q = search.trim().toLowerCase()
+    return cards.filter((c) => {
+      if (q && !(c.card_name.toLowerCase().includes(q) || cardCode(c).toLowerCase().includes(q))) return false
+      if (art === 'alt' && !c.card_is_alt_art) return false
+      if (art === 'base' && c.card_is_alt_art) return false
+      if (color && c.card_color !== color) return false
+      if (cardType && c.card_type !== cardType) return false
+      return true
+    })
+  }, [cards, search, art, color, cardType])
 
   if (loading) {
     return (
@@ -85,7 +94,7 @@ export function ListedForTradeList({ lat, lng, radiusKm, game, search, wantedIds
           </Text>
           <View className="flex-row items-center gap-1.5 mt-4">
             <Ionicons name="cube-outline" size={13} color={colors.faint} />
-            <Text className="text-faint text-xs font-display">Tip: bump the radius above</Text>
+            <Text className="text-faint text-xs font-display">Tip: widen your distance in Filters</Text>
           </View>
         </View>
       }

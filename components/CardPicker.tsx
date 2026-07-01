@@ -14,7 +14,6 @@ import { colors } from '@/lib/theme'
 const GAME_OPTIONS: { label: string; value: string | null }[] = [
   { label: 'All', value: null },
   { label: 'Gundam', value: 'gundam' },
-  { label: 'One Piece', value: 'one_piece' },
 ]
 
 type Props = {

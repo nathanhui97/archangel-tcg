@@ -56,21 +56,31 @@ type Props = {
   radiusKm: number
   game: Game | null
   search: string
+  art: 'alt' | 'base' | null
+  color: string | null
+  cardType: string | null
 }
 
 /** The "Wishlist" segment: cards nearby traders are hunting, as a 3-col grid. */
-export function WishlistList({ lat, lng, radiusKm, game, search }: Props) {
+export function WishlistList({ lat, lng, radiusKm, game, search, art, color, cardType }: Props) {
   const router = useRouter()
   const { width } = useWindowDimensions()
   const tileW = gridTileWidth(width)
   const { items, loading, error, refresh } = useNearbyWantlists(lat, lng, radiusKm, game)
 
   const groups = useMemo(() => {
-    const all = groupByCard(items)
-    if (!search.trim()) return all
-    const q = search.toLowerCase()
+    const q = search.trim().toLowerCase()
+    const filteredItems = items.filter((it) => {
+      if (art === 'alt' && !it.card_is_alt_art) return false
+      if (art === 'base' && it.card_is_alt_art) return false
+      if (color && it.card_color !== color) return false
+      if (cardType && it.card_type !== cardType) return false
+      return true
+    })
+    const all = groupByCard(filteredItems)
+    if (!q) return all
     return all.filter((g) => g.card_name.toLowerCase().includes(q) || cardCode(g).toLowerCase().includes(q))
-  }, [items, search])
+  }, [items, search, art, color, cardType])
 
   if (loading) {
     return (

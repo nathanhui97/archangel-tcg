@@ -10,14 +10,11 @@ import { useMyBinders, useMyPublicCards } from '@/lib/binders'
 import { useMyWantlist } from '@/lib/wantlist'
 import { useTrades } from '@/lib/trades'
 import type { Game } from '@/types'
+import { GAMES } from '@/lib/games'
 import { MonoLabel } from '@/components/ui'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { colors } from '@/lib/theme'
 
-const ALL_GAMES: { value: Game; label: string }[] = [
-  { value: 'gundam', label: 'Gundam' },
-  { value: 'one_piece', label: 'One Piece' },
-]
 
 export default function ProfileScreen() {
   const router = useRouter()
@@ -222,18 +219,29 @@ export default function ProfileScreen() {
               {savingGames && <ActivityIndicator size="small" color={colors.primary} />}
             </View>
             <View className="flex-row flex-wrap gap-2 mt-3 ml-[44px]">
-              {ALL_GAMES.map((g) => {
-                const active = profile?.games?.includes(g.value) ?? false
+              {GAMES.map((gi) => {
+                const isLive = gi.status === 'live'
+                const active = isLive && (profile?.games?.includes(gi.key as Game) ?? false)
                 return (
                   <Pressable
-                    key={g.value}
-                    onPress={() => toggleGame(g.value)}
-                    className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg border active:opacity-70 ${
-                      active ? 'bg-primary/10 border-primary' : 'border-subtle'
+                    key={gi.key}
+                    disabled={!isLive}
+                    onPress={isLive ? () => toggleGame(gi.key as Game) : undefined}
+                    className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
+                      !isLive
+                        ? 'border-subtle opacity-50'
+                        : active
+                          ? 'bg-primary/10 border-primary active:opacity-70'
+                          : 'border-subtle active:opacity-70'
                     }`}
                   >
                     {active && <Ionicons name="checkmark" size={13} color={colors.primary} />}
-                    <Text className={`text-xs font-display-medium ${active ? 'text-primary' : 'text-muted-2'}`}>{g.label}</Text>
+                    <Text className={`text-xs font-display-medium ${active ? 'text-primary' : 'text-muted-2'}`}>{gi.label}</Text>
+                    {!isLive && (
+                      <View className="bg-primary/10 border border-primary/40 rounded px-1.5 py-0.5 ml-0.5">
+                        <Text className="text-primary font-mono-bold text-[8px] tracking-wider">SOON</Text>
+                      </View>
+                    )}
                   </Pressable>
                 )
               })}

@@ -33,6 +33,11 @@ export interface NearbyCard {
   owner_handle: string
   owner_willing_to_ship: boolean
   distance_km: number | null  // null = shipper with no location set
+  // Enriched client-side from `cards` (see lib/nearby.ts) for filtering.
+  card_rarity?: string | null
+  card_color?: string | null
+  card_type?: string | null
+  card_is_alt_art?: boolean
 }
 
 export type CardType =
@@ -52,6 +57,7 @@ export interface Card {
   base_card_id: string | null      // "GD01-001" — same for all prints of a card
   is_alt_art: boolean              // derived: art_variant is not null (migration 0022)
   rarity_rank: number              // derived: higher = rarer, for display sort (migration 0022)
+  tcgplayer_product_id: number | null // TCGplayer product for price lookup (migration 0023)
   card_type: CardType | null
 
   // Shared
@@ -100,6 +106,11 @@ export interface NearbyWantlistItem {
   wanter_id: string
   wanter_handle: string
   distance_km: number | null
+  // Enriched client-side from `cards` (see lib/nearby.ts) for filtering.
+  card_rarity?: string | null
+  card_color?: string | null
+  card_type?: string | null
+  card_is_alt_art?: boolean
 }
 
 export interface BinderItem {

@@ -254,7 +254,8 @@ async function fetchCardDetail(id: string): Promise<CardDetail> {
   const $ = load(html)
 
   const name = $('.cardName').first().text().trim()
-  const rarity = $('.rarity').first().text().trim() || null
+  // Strip stray whitespace the source leaves inside parallels: "C   +" → "C+".
+  const rarity = $('.rarity').first().text().replace(/\s+/g, '') || null
 
   // Build a label → value map from the .dataBox dl pairs
   const data: Record<string, string> = {}

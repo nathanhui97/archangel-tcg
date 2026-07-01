@@ -2,6 +2,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'rea
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useCard } from '@/lib/cards'
+import { useCardPrice, formatPrice } from '@/lib/prices'
 import { useMyProfile } from '@/lib/profile'
 import { useNearbyCards } from '@/lib/nearby'
 import { useMyWantlist, addToWantlist, removeFromWantlist } from '@/lib/wantlist'
@@ -20,6 +21,7 @@ export default function CardDetailScreen() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { card, loading } = useCard(id)
+  const { price } = useCardPrice(card?.tcgplayer_product_id)
   const { profile } = useMyProfile()
   const { cards } = useNearbyCards(profile?.lat ?? null, profile?.lng ?? null, 25, null)
   const { cardIds, items, refresh } = useMyWantlist()
@@ -84,6 +86,16 @@ export default function CardDetailScreen() {
             <Text className="text-muted text-sm mt-0.5 font-display">
               {[card.game === 'gundam' ? 'Gundam' : 'One Piece', card.set_name].filter(Boolean).join(' · ')}
             </Text>
+
+            {price && (
+              <View className="flex-row items-center gap-2 mt-3.5 bg-primary/10 border border-primary/30 rounded-xl pl-2.5 pr-3 py-2">
+                <Ionicons name="pricetag" size={14} color={colors.primary} />
+                <Text className="text-primary font-mono-bold text-lg">≈ {formatPrice(price.market)}</Text>
+                <Text className="text-primary/60 font-mono-bold text-[11px] mt-0.5">USD</Text>
+                <View className="w-px h-3.5 bg-primary/25 mx-0.5" />
+                <Text className="text-faint text-[10px] font-display">TCGplayer market</Text>
+              </View>
+            )}
 
             {onWantlist && (
               <View className="flex-row items-center gap-1.5 mt-3 bg-primary/10 border border-primary rounded-lg px-3 py-1.5">

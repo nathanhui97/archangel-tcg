@@ -117,27 +117,53 @@ export function useCard(id: string | undefined) {
   return { card, loading }
 }
 
-/** Distinct values for the filter dropdowns. */
+/**
+ * Normalize a scraped rarity code: the Gundam source leaves stray whitespace
+ * inside parallels ("C   +" → "C+", "LR   ++" → "LR++"). Base codes ("C","LR")
+ * pass through unchanged.
+ */
+export function normRarity(r: string | null | undefined): string {
+  return (r ?? '').replace(/\s+/g, '').toUpperCase()
+}
+
+const RARITY_TIER: Record<string, number> = { C: 0, U: 1, R: 2, SR: 3, LR: 4, P: 9 }
+
+/** Sort key so grades read C, C+, C++, U, U+, R, R+, LR, LR+, LR++, P. */
+function rarityOrder(r: string): number {
+  const m = r.match(/^([A-Z]+)(\++)?$/)
+  const base = m?.[1] ?? r
+  const plus = m?.[2]?.length ?? 0
+  return (RARITY_TIER[base] ?? 8) * 10 + plus
+}
+
+/** Distinct values for the filter dropdowns (paginated so rare grades aren't missed). */
 export async function fetchCardFacets(game = 'gundam'): Promise<{
   sets: { code: string; name: string }[]
   colors: string[]
   cardTypes: string[]
+  rarities: string[]
 }> {
-  const { data, error } = await supabase
-    .from('cards')
-    .select('set_code, set_name, color, card_type')
-    .eq('game', game)
-
-  if (error || !data) return { sets: [], colors: [], cardTypes: [] }
-
   const setMap = new Map<string, string>()
   const colors = new Set<string>()
   const types = new Set<string>()
+  const rarities = new Set<string>()
 
-  for (const row of data) {
-    if (row.set_code) setMap.set(row.set_code, row.set_name ?? row.set_code)
-    if (row.color) colors.add(row.color)
-    if (row.card_type) types.add(row.card_type)
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('set_code, set_name, color, card_type, rarity')
+      .eq('game', game)
+      .order('id', { ascending: true })
+      .range(from, from + 999)
+    if (error || !data || data.length === 0) break
+    for (const row of data) {
+      if (row.set_code) setMap.set(row.set_code, row.set_name ?? row.set_code)
+      if (row.color) colors.add(row.color)
+      if (row.card_type) types.add(row.card_type)
+      const r = normRarity(row.rarity)
+      if (r) rarities.add(r)
+    }
+    if (data.length < 1000) break
   }
 
   return {
@@ -146,5 +172,6 @@ export async function fetchCardFacets(game = 'gundam'): Promise<{
     ),
     colors: Array.from(colors).sort(),
     cardTypes: Array.from(types).sort(),
+    rarities: Array.from(rarities).sort((a, b) => rarityOrder(a) - rarityOrder(b)),
   }
 }

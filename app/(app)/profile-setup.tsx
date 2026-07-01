@@ -17,11 +17,11 @@ import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import type { Game } from '@/types'
 import { GAME_LABELS } from '@/types'
+import { GAMES } from '@/lib/games'
 import { Button, MonoLabel } from '@/components/ui'
 import { colors } from '@/lib/theme'
 
 const HANDLE_REGEX = /^[a-zA-Z0-9_]{3,20}$/
-const ALL_GAMES: Game[] = ['gundam', 'one_piece']
 
 type HandleStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
@@ -250,23 +250,32 @@ export default function ProfileSetupScreen() {
           {/* Games */}
           <View className="mt-7">
             <MonoLabel className="mb-3">GAMES YOU PLAY</MonoLabel>
-            <View className="flex-row gap-2">
-              {ALL_GAMES.map((g) => {
-                const selected = games.includes(g)
+            <View className="flex-row flex-wrap gap-2">
+              {GAMES.map((gi) => {
+                const isLive = gi.status === 'live'
+                const selected = isLive && games.includes(gi.key as Game)
                 return (
                   <Pressable
-                    key={g}
-                    onPress={() => toggleGame(g)}
-                    className={`flex-row items-center gap-1.5 px-4 py-2.5 rounded-xl border active:opacity-80 ${
-                      selected ? 'bg-primary/10 border-primary' : 'bg-surface border-subtle'
+                    key={gi.key}
+                    disabled={!isLive}
+                    onPress={isLive ? () => toggleGame(gi.key as Game) : undefined}
+                    className={`flex-row items-center gap-1.5 px-4 py-2.5 rounded-xl border ${
+                      !isLive
+                        ? 'bg-surface border-subtle opacity-50'
+                        : selected
+                          ? 'bg-primary/10 border-primary active:opacity-80'
+                          : 'bg-surface border-subtle active:opacity-80'
                     }`}
                   >
                     {selected && <Ionicons name="checkmark" size={14} color={colors.primary} />}
-                    <Text
-                      className={`font-display-semibold text-sm ${selected ? 'text-primary' : 'text-muted-2'}`}
-                    >
-                      {g === 'gundam' ? 'Gundam' : 'One Piece'}
+                    <Text className={`font-display-semibold text-sm ${selected ? 'text-primary' : 'text-muted-2'}`}>
+                      {gi.label}
                     </Text>
+                    {!isLive && (
+                      <View className="bg-primary/10 border border-primary/40 rounded px-1.5 py-0.5 ml-0.5">
+                        <Text className="text-primary font-mono-bold text-[8px] tracking-wider">SOON</Text>
+                      </View>
+                    )}
                   </Pressable>
                 )
               })}

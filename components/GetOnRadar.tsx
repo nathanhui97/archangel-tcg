@@ -13,6 +13,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const STORAGE_KEY = 'getOnRadar.expanded'
+const DISMISS_KEY = 'getOnRadar.dismissed'
 
 type Props = {
   hasLocation: boolean
@@ -63,12 +64,24 @@ export function GetOnRadar({ hasLocation, hasTradeCards, hasWantlist }: Props) {
   const router = useRouter()
   const done = [hasLocation, hasTradeCards, hasWantlist].filter(Boolean).length
   const [expanded, setExpanded] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
     secureStorage.getItem(STORAGE_KEY).then((v) => {
       if (v === '1') setExpanded(true)
     })
+    secureStorage.getItem(DISMISS_KEY).then((v) => {
+      if (v === '1') setDismissed(true)
+    })
   }, [])
+
+  function dismiss() {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+    setDismissed(true)
+    secureStorage.setItem(DISMISS_KEY, '1')
+  }
+
+  if (dismissed) return null
 
   function toggle() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
@@ -92,6 +105,9 @@ export function GetOnRadar({ hasLocation, hasTradeCards, hasWantlist }: Props) {
           <Text className="text-primary font-mono-bold text-[11px]">{done} of 3</Text>
         </View>
         <Ionicons name="chevron-down" size={18} color={colors.muted2} />
+        <Pressable onPress={dismiss} hitSlop={10} className="active:opacity-60 ml-2">
+          <Ionicons name="close" size={16} color={colors.faint} />
+        </Pressable>
       </Pressable>
     )
   }
@@ -106,6 +122,9 @@ export function GetOnRadar({ hasLocation, hasTradeCards, hasWantlist }: Props) {
           <Text className="text-muted text-xs mt-0.5 font-display">A couple steps and you'll see trades near you.</Text>
         </View>
         <Ionicons name="chevron-up" size={18} color={colors.muted2} />
+        <Pressable onPress={dismiss} hitSlop={10} className="active:opacity-60 ml-2">
+          <Ionicons name="close" size={16} color={colors.faint} />
+        </Pressable>
       </Pressable>
 
       {/* Progress */}

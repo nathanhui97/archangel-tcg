@@ -2,6 +2,31 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import type { Game, NearbyCard, NearbyWantlistItem } from '@/types'
 
+/**
+ * The nearby RPCs don't return card attributes, so we fetch rarity/color/type
+ * for the returned cards in one extra query and merge them in — enough to drive
+ * the Trade-tab filters without changing the RPC.
+ */
+async function enrichWithCardAttrs<T extends { card_id: string }>(rows: T[]): Promise<T[]> {
+  const ids = Array.from(new Set(rows.map((r) => r.card_id)))
+  if (ids.length === 0) return rows
+  const { data } = await supabase
+    .from('cards')
+    .select('id, rarity, color, card_type, is_alt_art')
+    .in('id', ids)
+  const map = new Map((data ?? []).map((c) => [c.id, c]))
+  return rows.map((r) => {
+    const c = map.get(r.card_id)
+    return {
+      ...r,
+      card_rarity: c?.rarity ?? null,
+      card_color: c?.color ?? null,
+      card_type: c?.card_type ?? null,
+      card_is_alt_art: c?.is_alt_art ?? false,
+    }
+  })
+}
+
 export function useNearbyCards(
   lat: number | null,
   lng: number | null,
@@ -25,7 +50,7 @@ export function useNearbyCards(
       setError(rpcError.message)
       setCards([])
     } else {
-      setCards((data ?? []) as NearbyCard[])
+      setCards(await enrichWithCardAttrs((data ?? []) as NearbyCard[]))
     }
     setLoading(false)
   }, [lat, lng, radiusKm, game])
@@ -60,7 +85,7 @@ export function useNearbyWantlists(
       setError(rpcError.message)
       setItems([])
     } else {
-      setItems((data ?? []) as NearbyWantlistItem[])
+      setItems(await enrichWithCardAttrs((data ?? []) as NearbyWantlistItem[]))
     }
     setLoading(false)
   }, [lat, lng, radiusKm, game])
