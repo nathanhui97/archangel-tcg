@@ -20,7 +20,14 @@ export function useNearbyBinders(lat: number | null, lng: number | null, radiusK
       setError(rpcError.message)
       setBinders([])
     } else {
-      setBinders((data ?? []) as NearbyBinder[])
+      // PostgREST returns numeric columns as strings — coerce for the UI.
+      setBinders(
+        ((data ?? []) as NearbyBinder[]).map((b) => ({
+          ...b,
+          total_value: b.total_value == null ? null : Number(b.total_value),
+          distance_km: b.distance_km == null ? null : Number(b.distance_km),
+        }))
+      )
     }
     setLoading(false)
   }, [lat, lng, radiusKm])

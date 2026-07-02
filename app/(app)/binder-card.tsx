@@ -34,9 +34,12 @@ export default function BinderCardScreen() {
       .select('handle')
       .eq('id', ownerId)
       .maybeSingle()
-      .then(({ data }) => {
-        if (data?.handle) setOwnerHandle(data.handle)
-      })
+      .then(
+        ({ data }) => {
+          if (data?.handle) setOwnerHandle(data.handle)
+        },
+        () => {}
+      )
   }, [ownerId, ownerHandleParam])
 
   const isOwn = !!profile?.id && profile.id === ownerId
@@ -99,7 +102,7 @@ export default function BinderCardScreen() {
         {!isOwn && (
           <Pressable
             onPress={showInterest}
-            disabled={sending}
+            disabled={sending || !profile?.id}
             style={!sending ? { shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 0 } } : undefined}
             className={`flex-row items-center justify-center gap-1.5 py-4 rounded-2xl ${sending ? 'bg-surface-control' : 'bg-primary active:opacity-90'}`}
           >

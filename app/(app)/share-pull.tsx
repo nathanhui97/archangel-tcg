@@ -190,9 +190,9 @@ export default function SharePullScreen() {
         )}
         <Pressable
           onPress={post}
-          disabled={posting}
-          style={!posting ? { shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 22, shadowOffset: { width: 0, height: 0 } } : undefined}
-          className={`flex-row items-center justify-center gap-1.5 py-4 rounded-2xl ${posting ? 'bg-surface-control' : 'bg-primary active:opacity-90'}`}
+          disabled={posting || !profile?.id}
+          style={!posting && profile?.id ? { shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 22, shadowOffset: { width: 0, height: 0 } } : undefined}
+          className={`flex-row items-center justify-center gap-1.5 py-4 rounded-2xl ${posting || !profile?.id ? 'bg-surface-control' : 'bg-primary active:opacity-90'}`}
         >
           {posting ? (
             <ActivityIndicator color={colors.primaryInk} />

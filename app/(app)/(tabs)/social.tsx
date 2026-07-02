@@ -17,10 +17,13 @@ import type { ReactionKind } from '@/types'
 type Segment = 'pulls' | 'nearby' | 'leaderboard'
 const RADIUS_KM = 25
 
+const EMPTY_SET = new Set<ReactionKind>()
+
 function bump(p: FeedPull, kind: ReactionKind, delta: number): FeedPull {
-  if (kind === 'fire') return { ...p, fire_count: Math.max(0, p.fire_count + delta) }
-  if (kind === 'heart') return { ...p, heart_count: Math.max(0, p.heart_count + delta) }
-  return { ...p, want_count: Math.max(0, p.want_count + delta) }
+  // Number() guards against PostgREST count columns arriving as strings.
+  if (kind === 'fire') return { ...p, fire_count: Math.max(0, Number(p.fire_count) + delta) }
+  if (kind === 'heart') return { ...p, heart_count: Math.max(0, Number(p.heart_count) + delta) }
+  return { ...p, want_count: Math.max(0, Number(p.want_count) + delta) }
 }
 
 export default function SocialScreen() {
@@ -32,8 +35,18 @@ export default function SocialScreen() {
   const { pulls, mine, loading, error, refresh } = useFeed()
   const [items, setItems] = useState<FeedPull[]>([])
   const [myReacts, setMyReacts] = useState<Record<string, Set<ReactionKind>>>({})
+  const [refreshing, setRefreshing] = useState(false)
   useEffect(() => setItems(pulls), [pulls])
   useEffect(() => setMyReacts(mine), [mine])
+
+  async function doRefresh(fn: () => Promise<void>) {
+    setRefreshing(true)
+    try {
+      await fn()
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   // Nearby binders
   const { binders, loading: bindersLoading, refresh: refreshBinders } = useNearbyBinders(
@@ -42,11 +55,12 @@ export default function SocialScreen() {
     RADIUS_KM
   )
 
+  // Only refresh nearby on focus. The pulls feed loads on mount + pull-to-refresh
+  // — auto-refreshing it on every focus would wipe an in-flight optimistic reaction.
   useFocusEffect(
     useCallback(() => {
-      refresh()
       refreshBinders()
-    }, [refresh, refreshBinders])
+    }, [refreshBinders])
   )
 
   async function react(pull: FeedPull, kind: ReactionKind, on: boolean) {
@@ -61,6 +75,8 @@ export default function SocialScreen() {
       if (on) await addReaction(pull.id, kind)
       else await removeReaction(pull.id, kind)
     } catch {
+      // reconcile only on failure — success keeps the optimistic state (which
+      // now matches the DB), so a focus-refresh mid-tap can't wipe it.
       refresh()
     }
   }
@@ -107,17 +123,24 @@ export default function SocialScreen() {
         ) : error ? (
           <View className="flex-1 items-center justify-center px-8">
             <Text className="text-danger text-sm text-center font-display">{error}</Text>
+            <Pressable
+              onPress={() => doRefresh(refresh)}
+              className="flex-row items-center gap-1.5 mt-4 bg-primary/10 border border-primary rounded-xl px-4 py-2.5 active:opacity-80"
+            >
+              <Ionicons name="refresh" size={14} color={colors.primary} />
+              <Text className="text-primary font-display-semibold text-sm">Try again</Text>
+            </Pressable>
           </View>
         ) : (
           <FlatList
             data={items}
             keyExtractor={(p) => p.id}
             contentContainerStyle={{ paddingTop: 6, paddingBottom: 24 }}
-            refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => doRefresh(refresh)} tintColor={colors.primary} />}
             renderItem={({ item }) => (
               <PullCard
                 pull={item}
-                mine={myReacts[item.id] ?? new Set()}
+                mine={myReacts[item.id] ?? EMPTY_SET}
                 onReact={(kind, on) => react(item, kind, on)}
                 onOpenCard={() => router.push({ pathname: '/(app)/card/[id]', params: { id: item.card_id } })}
                 onOpenTrader={() => router.push({ pathname: '/(app)/trader/[handle]', params: { handle: item.owner_handle } })}
@@ -152,7 +175,7 @@ export default function SocialScreen() {
           data={binders}
           keyExtractor={(b) => b.binder_id}
           contentContainerStyle={{ paddingTop: 6, paddingBottom: 24 }}
-          refreshControl={<RefreshControl refreshing={bindersLoading} onRefresh={refreshBinders} tintColor={colors.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => doRefresh(refreshBinders)} tintColor={colors.primary} />}
           renderItem={({ item }) => (
             <NearbyBinderRow
               binder={item}

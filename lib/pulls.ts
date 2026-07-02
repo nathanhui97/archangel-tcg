@@ -11,6 +11,7 @@ async function uploadPullPhoto(userId: string, uri: string): Promise<string> {
   const path = `${userId}/${Date.now()}.${ext}`
   // RN-friendly: read the file:// uri as an ArrayBuffer (no extra native deps).
   const arraybuffer = await fetch(uri).then((r) => r.arrayBuffer())
+  if (!arraybuffer || arraybuffer.byteLength === 0) throw new Error("Couldn't read that photo — try retaking it.")
   const { error } = await supabase.storage.from(BUCKET).upload(path, arraybuffer, {
     contentType,
     upsert: true,
@@ -142,9 +143,12 @@ export function useFeed() {
   return { pulls, mine, loading, error, refresh: load }
 }
 
-/** Add/remove one of the current user's reactions. user_id defaults to auth.uid(). */
+/** Add/remove one of the current user's reactions. user_id defaults to auth.uid().
+ *  Upsert w/ ignoreDuplicates so a rapid double-tap doesn't error on the unique index. */
 export async function addReaction(pullId: string, kind: ReactionKind): Promise<void> {
-  const { error } = await supabase.from('pull_reactions').insert({ pull_id: pullId, kind })
+  const { error } = await supabase
+    .from('pull_reactions')
+    .upsert({ pull_id: pullId, kind }, { onConflict: 'pull_id,user_id,kind', ignoreDuplicates: true })
   if (error) throw new Error(error.message)
 }
 export async function removeReaction(pullId: string, kind: ReactionKind): Promise<void> {

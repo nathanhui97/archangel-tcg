@@ -55,9 +55,12 @@ export function useCardPrice(productId: number | null | undefined) {
   return { price, loading }
 }
 
-/** "$2.60" for cents-level cards, "$746" once it's into whole dollars. */
-export function formatPrice(n: number): string {
-  return n >= 100 ? `$${Math.round(n)}` : `$${n.toFixed(2)}`
+/** "$2.60" for cents-level cards, "$746" once it's into whole dollars.
+ *  Coerces + guards: PostgREST returns numeric columns as strings. */
+export function formatPrice(n: number | string | null | undefined): string {
+  const x = Number(n)
+  if (!Number.isFinite(x)) return '$0'
+  return x >= 100 ? `$${Math.round(x)}` : `$${x.toFixed(2)}`
 }
 
 type ValueItem = { card?: { tcgplayer_product_id?: number | null } | null; quantity: number; is_foil: boolean }

@@ -43,17 +43,6 @@ export function CityLeaderboard() {
   const { rows, myRank, loading, refresh } = useCityLeaderboard(city, metric)
   const { cities } = useLeaderboardCities()
 
-  if (!profile?.city && !city) {
-    return (
-      <View className="flex-1 items-center justify-center px-10">
-        <Ionicons name="location-outline" size={30} color={colors.faint} />
-        <Text className="text-muted text-sm text-center mt-3 font-display">
-          Set your location in Profile to see your city’s leaderboard.
-        </Text>
-      </View>
-    )
-  }
-
   return (
     <View className="flex-1">
       {/* City selector + metric toggle */}
@@ -82,6 +71,8 @@ export function CityLeaderboard() {
         </View>
       </View>
 
+      {city ? (
+        <>
       {/* Your rank */}
       {myRank ? (
         <View className="mx-5 mb-2 flex-row items-center bg-primary/10 border border-primary rounded-xl px-4 py-2.5">
@@ -136,6 +127,17 @@ export function CityLeaderboard() {
             </View>
           }
         />
+      )}
+        </>
+      ) : (
+        <View className="flex-1 items-center justify-center px-10">
+          <Ionicons name="location-outline" size={28} color={colors.faint} />
+          <Text className="text-muted text-sm text-center mt-3 font-display">
+            {profile?.city
+              ? 'Pick a city above to see its leaderboard.'
+              : 'Pick a city above, or set your location in Profile.'}
+          </Text>
+        </View>
       )}
 
       {/* City picker */}

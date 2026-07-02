@@ -12,6 +12,7 @@ async function uploadBinderPhotos(userId: string, binderId: string, uris: string
     const contentType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg'
     const path = `${userId}/binder-${binderId}/${Date.now()}-${i}.${ext}`
     const arraybuffer = await fetch(uri).then((r) => r.arrayBuffer())
+    if (!arraybuffer || arraybuffer.byteLength === 0) throw new Error("Couldn't read one of the photos — try retaking it.")
     const { error } = await supabase.storage.from(BUCKET).upload(path, arraybuffer, { contentType, upsert: true })
     if (error) throw new Error(`photo upload → ${error.message}`)
     paths.push(path)
