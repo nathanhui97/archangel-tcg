@@ -8,12 +8,13 @@ import { useMyProfile } from '@/lib/profile'
 import { useNearbyBinders } from '@/lib/nearby'
 import { PullCard } from '@/components/PullCard'
 import { NearbyBinderRow } from '@/components/NearbyBinderRow'
+import { CityLeaderboard } from '@/components/CityLeaderboard'
 import { ScreenHeader } from '@/components/ui/ScreenHeader'
 import { RadarLogo } from '@/components/ui/RadarLogo'
 import { colors } from '@/lib/theme'
 import type { ReactionKind } from '@/types'
 
-type Segment = 'pulls' | 'nearby'
+type Segment = 'pulls' | 'nearby' | 'leaderboard'
 const RADIUS_KM = 25
 
 function bump(p: FeedPull, kind: ReactionKind, delta: number): FeedPull {
@@ -64,7 +65,7 @@ export default function SocialScreen() {
     }
   }
 
-  const shareCta = (
+  const headerRight = (
     <Pressable
       onPress={() => router.push('/(app)/pick-pull')}
       className="flex-row items-center gap-1 bg-primary rounded-lg px-3 py-1.5 active:opacity-80"
@@ -76,13 +77,14 @@ export default function SocialScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={['top']}>
-      <ScreenHeader title="Social" subtitle="Fresh pulls & collections near you" right={shareCta} />
+      <ScreenHeader title="Social" subtitle="Fresh pulls & collections near you" right={headerRight} />
 
       {/* Segments */}
       <View className="mx-4 mb-2 flex-row bg-surface border border-subtle rounded-xl p-0.5">
         {([
           { key: 'pulls', label: 'Pulls' },
-          { key: 'nearby', label: 'Nearby Binders' },
+          { key: 'nearby', label: 'Nearby' },
+          { key: 'leaderboard', label: 'Leaderboard' },
         ] as const).map((s) => {
           const active = segment === s.key
           return (
@@ -139,6 +141,8 @@ export default function SocialScreen() {
             }
           />
         )
+      ) : segment === 'leaderboard' ? (
+        <CityLeaderboard />
       ) : bindersLoading && binders.length === 0 ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={colors.primary} />
