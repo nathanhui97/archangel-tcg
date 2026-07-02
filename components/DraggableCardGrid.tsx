@@ -62,12 +62,13 @@ type TileProps = {
   onReorder: (orderedIds: string[]) => void
   onRequestEdit?: () => void
   onDelete?: () => void
+  onPress?: () => void
   children: ReactNode
 }
 
 function MovableTile({
   id, indexFallback, ids, positions, count, columns, tileWidth, tileHeight, gap,
-  editing, onReorder, onRequestEdit, onDelete, children,
+  editing, onReorder, onRequestEdit, onDelete, onPress, children,
 }: TileProps) {
   const startX = useSharedValue(0)
   const startY = useSharedValue(0)
@@ -157,7 +158,15 @@ function MovableTile({
       if (onDelete && e.x <= BADGE_HIT && e.y <= BADGE_HIT) runOnJS(onDelete)()
     })
 
-  // Out of edit mode, a long press enters edit mode (the iPhone "hold to jiggle").
+  // Out of edit mode, a quick tap opens the item's action; a long press enters
+  // edit mode (the iPhone "hold to jiggle").
+  const tapOpen = Gesture.Tap()
+    .enabled(!editing)
+    .maxDuration(250)
+    .onEnd(() => {
+      if (onPress) runOnJS(onPress)()
+    })
+
   const longPress = Gesture.LongPress()
     .enabled(!editing)
     .minDuration(220)
@@ -165,7 +174,7 @@ function MovableTile({
       if (onRequestEdit) runOnJS(onRequestEdit)()
     })
 
-  const gesture = Gesture.Exclusive(pan, tapDelete, longPress)
+  const gesture = Gesture.Exclusive(pan, tapDelete, tapOpen, longPress)
 
   const style = useAnimatedStyle(() => ({
     position: 'absolute',
@@ -216,6 +225,8 @@ type Props<T extends { id: string }> = {
   onRequestEdit?: () => void
   /** Called when the delete badge on an item is tapped. */
   onDeleteItem?: (item: T) => void
+  /** Called when an item is tapped (out of edit mode). */
+  onItemPress?: (item: T) => void
   columns?: number
   gap?: number
 }
@@ -229,7 +240,7 @@ type Props<T extends { id: string }> = {
  * drag again to move a card a long way. Fine for typical binder sizes.
  */
 export function DraggableCardGrid<T extends { id: string }>({
-  items, renderItem, tileWidth, tileHeight, onReorder, editing = false, onRequestEdit, onDeleteItem, columns = 3, gap = 10,
+  items, renderItem, tileWidth, tileHeight, onReorder, editing = false, onRequestEdit, onDeleteItem, onItemPress, columns = 3, gap = 10,
 }: Props<T>) {
   const ids = items.map((i) => i.id)
   const positions = useSharedValue<Record<string, number>>(buildPositions(ids))
@@ -260,6 +271,7 @@ export function DraggableCardGrid<T extends { id: string }>({
           onReorder={onReorder}
           onRequestEdit={onRequestEdit}
           onDelete={onDeleteItem ? () => onDeleteItem(item) : undefined}
+          onPress={onItemPress ? () => onItemPress(item) : undefined}
         >
           {renderItem(item)}
         </MovableTile>

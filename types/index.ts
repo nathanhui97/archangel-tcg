@@ -15,6 +15,7 @@ export interface Profile {
   lng: number | null
   city: string | null
   willing_to_ship: boolean
+  verified_at: string | null       // trader ✓ badge (migration 0024); set by review only
   created_at: string
 }
 
@@ -92,8 +93,61 @@ export interface Binder {
   binder_type: BinderType
   is_public: boolean
   cover_card_id: string | null
+  verified_at: string | null       // photo-verified badge (migration 0024)
   created_at: string
   updated_at: string
+}
+
+export interface NearbyBinder {
+  binder_id: string
+  name: string
+  cover_image_url: string | null
+  item_count: number
+  owner_id: string
+  owner_handle: string
+  owner_verified_at: string | null
+  owner_willing_to_ship: boolean
+  binder_verified_at: string | null
+  distance_km: number | null
+  total_value: number | null
+}
+
+// ── Social: the Pull Feed (migration 0024) ──────────────────────────────
+export type ReactionKind = 'fire' | 'heart' | 'want'
+export type PullVisibility = 'public' | 'private'
+
+export interface Pull {
+  id: string
+  user_id: string
+  card_id: string
+  binder_item_id: string | null
+  photo_path: string | null        // path in the public 'pull-photos' bucket
+  caption: string | null
+  is_pull: boolean                 // framed as a fresh pull vs just sharing a card
+  visibility: PullVisibility
+  verified_at: string | null       // ✓ set by the founder review script only
+  created_at: string
+}
+
+export interface PullReaction {
+  id: string
+  pull_id: string
+  user_id: string
+  kind: ReactionKind
+  created_at: string
+}
+
+export type VerificationStatus = 'pending' | 'approved' | 'rejected'
+
+export interface BinderVerification {
+  id: string
+  binder_id: string
+  user_id: string
+  photo_paths: string[]
+  note: string | null
+  status: VerificationStatus
+  submitted_at: string
+  reviewed_at: string | null
 }
 
 export interface NearbyWantlistItem {

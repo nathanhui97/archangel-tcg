@@ -9,6 +9,8 @@
     "seed:onepiece": "tsx seed-onepiece.ts",
     "map:tcgplayer": "tsx map-tcgplayer-ids.ts",
     "sync:prices": "tsx sync-prices.ts",
+    "review:pulls": "tsx review-pulls.ts",
+    "build-binder": "tsx build-binder.ts",
     "smoke-test": "tsx smoke-test.ts",
     "smoke-test-trades": "tsx smoke-test-trades.ts"
   },

@@ -11,9 +11,9 @@ import { Button, MonoLabel } from '@/components/ui'
 import { RadarLogo } from '@/components/ui/RadarLogo'
 import { colors } from '@/lib/theme'
 
-// Steps: 0 welcome · 1 wishlist · 2 trade cards · 3 done.
+// Steps: 0 welcome · 1 wantlist · 2 trade cards · 3 done.
 // The two card steps are skippable; skipping advances to the next step (so a
-// wishlist-skip still offers the trade step — best for seeding inventory).
+// wantlist-skip still offers the trade step — best for seeding inventory).
 type Step = 0 | 1 | 2 | 3
 
 export default function OnboardingScreen() {
@@ -21,7 +21,7 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState<Step>(0)
 
   // Local tallies of what they've added, for the "done" recap.
-  const [wishAdded, setWishAdded] = useState(0)
+  const [wantAdded, setWantAdded] = useState(0)
   const [tradeAdded, setTradeAdded] = useState(0)
 
   // The public "For Trade" binder is created lazily on the first trade-card add,
@@ -39,7 +39,7 @@ export default function OnboardingScreen() {
     router.replace('/(app)/(tabs)/trade')
   }
 
-  async function addWishlist(ids: string[]) {
+  async function addWantlist(ids: string[]) {
     for (const id of ids) {
       try {
         await addToWantlist(id)
@@ -48,7 +48,7 @@ export default function OnboardingScreen() {
       }
     }
     await refreshWant()
-    setWishAdded((n) => n + ids.length)
+    setWantAdded((n) => n + ids.length)
   }
 
   async function addTradeCards(ids: string[]) {
@@ -75,11 +75,11 @@ export default function OnboardingScreen() {
             key={`wish-${defaultGame ?? 'all'}`}
             title="What cards are you looking for?"
             subtitle="Add a few — we'll ping you when one's nearby."
-            addNoun="wishlist"
+            addNoun="wantlist"
             addedIds={wantedIds}
             defaultGame={defaultGame}
             onSubmit={async (ids) => {
-              if (ids.length) await addWishlist(ids)
+              if (ids.length) await addWantlist(ids)
               setStep(2)
             }}
             submitWithLabel={(n) => `Add ${n} & continue`}
@@ -108,7 +108,7 @@ export default function OnboardingScreen() {
       )}
 
       {step === 3 && (
-        <DoneStep wishAdded={wishAdded} tradeAdded={tradeAdded} onFinish={finish} />
+        <DoneStep wantAdded={wantAdded} tradeAdded={tradeAdded} onFinish={finish} />
       )}
     </SafeAreaView>
   )
@@ -137,7 +137,7 @@ function WelcomeStep({ onStart, onSkip }: { onStart: () => void; onSkip: () => v
         </Text>
 
         <View className="mt-9 w-full gap-3">
-          <ValueRow icon="heart-outline" text="Your wishlist pings nearby sellers" />
+          <ValueRow icon="heart-outline" text="Your wantlist pings nearby sellers" />
           <ValueRow icon="albums-outline" text="Your trade cards appear on their radar" />
           <ValueRow icon="navigate-outline" text="Match and meet up to trade in person" />
         </View>
@@ -193,16 +193,16 @@ function CardStep({ stepIndex, children }: { stepIndex: number; children: React.
 // ─────────────────────────────────────────────────────────────────────────
 
 function DoneStep({
-  wishAdded,
+  wantAdded,
   tradeAdded,
   onFinish,
 }: {
-  wishAdded: number
+  wantAdded: number
   tradeAdded: number
   onFinish: () => void
 }) {
   const insets = useSafeAreaInsets()
-  const addedAnything = wishAdded > 0 || tradeAdded > 0
+  const addedAnything = wantAdded > 0 || tradeAdded > 0
   return (
     <ScrollView
       className="flex-1"
@@ -223,7 +223,7 @@ function DoneStep({
         {addedAnything && (
           <View className="flex-row gap-3 mt-9">
             <RecapTile count={tradeAdded} label="FOR TRADE" />
-            <RecapTile count={wishAdded} label="ON WISHLIST" />
+            <RecapTile count={wantAdded} label="ON WANTLIST" />
           </View>
         )}
       </View>

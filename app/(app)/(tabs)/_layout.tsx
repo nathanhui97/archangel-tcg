@@ -45,6 +45,10 @@ export default function TabLayout() {
         options={{ title: 'Trade', tabBarIcon: tabIcon('swap-horizontal-outline', 'swap-horizontal') }}
       />
       <Tabs.Screen
+        name="social"
+        options={{ title: 'Social', tabBarIcon: tabIcon('flame-outline', 'flame') }}
+      />
+      <Tabs.Screen
         name="my-cards"
         options={{ title: 'Binders', tabBarIcon: tabIcon('albums-outline', 'albums') }}
       />

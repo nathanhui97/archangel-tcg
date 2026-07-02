@@ -61,8 +61,8 @@ type Props = {
   cardType: string | null
 }
 
-/** The "Wishlist" segment: cards nearby traders are hunting, as a 3-col grid. */
-export function WishlistList({ lat, lng, radiusKm, game, search, art, color, cardType }: Props) {
+/** The "Wantlist" segment: cards nearby traders are hunting, as a 3-col grid. */
+export function WantlistList({ lat, lng, radiusKm, game, search, art, color, cardType }: Props) {
   const router = useRouter()
   const { width } = useWindowDimensions()
   const tileW = gridTileWidth(width)

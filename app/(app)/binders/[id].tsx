@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import {
   useBinder,
@@ -21,7 +21,11 @@ import {
   deleteBinder,
   setBinderCover,
 } from '@/lib/binders'
+import { pickNotableCard, type NotableCard } from '@/lib/pulls'
+import { useBinderValue, formatPrice } from '@/lib/prices'
+import { useBinderVerificationStatus } from '@/lib/verifications'
 import { CardPicker } from '@/components/CardPicker'
+import { PullCelebration } from '@/components/PullCelebration'
 import { DraggableCardGrid } from '@/components/DraggableCardGrid'
 import { BinderMenuSheet } from '@/components/BinderMenuSheet'
 import { CoverPickerSheet } from '@/components/CoverPickerSheet'
@@ -76,11 +80,17 @@ export default function BinderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { session } = useAuth()
   const { binder, items, loading, error, refresh } = useBinder(id)
+  const { value: binderValue } = useBinderValue(items)
+  const { pending: verifPending, refresh: refreshVerif } = useBinderVerificationStatus(binder?.id)
+
+  // Re-check verification state when returning from the verify screen.
+  useFocusEffect(useCallback(() => { refreshVerif() }, [refreshVerif]))
   const [adding, setAdding] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [coverOpen, setCoverOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
+  const [celebration, setCelebration] = useState<NotableCard | null>(null)
   const [confirm, setConfirm] = useState<
     { title: string; message?: string; confirmLabel: string; onConfirm: () => void } | null
   >(null)
@@ -208,6 +218,9 @@ export default function BinderDetailScreen() {
               await addCardsToBinder(binder.id, cardIds)
               refresh()
               setAdding(false) // return to the binder so the user sees the new cards
+              // Nudge a share only for a notable card (alt-art / rare) — never bulk.
+              const notable = await pickNotableCard(cardIds)
+              if (notable) setCelebration(notable)
             } catch (err) {
               Alert.alert('Could not add cards', (err as Error).message)
             }
@@ -302,6 +315,39 @@ export default function BinderDetailScreen() {
             </Text>
           )}
         </View>
+
+        {binderValue != null && binderValue > 0 ? (
+          <View className="flex-row items-center gap-1 mt-2 bg-primary/10 border border-primary/30 rounded-full px-3 py-1">
+            <Ionicons name="pricetag" size={12} color={colors.primary} />
+            <Text className="text-primary font-mono-bold text-xs">≈ {formatPrice(binderValue)} USD</Text>
+            <Text className="text-faint text-[11px] font-display">est. value</Text>
+          </View>
+        ) : null}
+
+        {/* Verification: verified chip (anyone) · pending / Verify CTA (owner, public) */}
+        {binder.verified_at ? (
+          <View className="flex-row items-center gap-1 mt-2 bg-primary/10 border border-primary/40 rounded-full px-3 py-1">
+            <Ionicons name="shield-checkmark" size={12} color={colors.primary} />
+            <Text className="text-primary font-mono-bold text-xs tracking-wider">VERIFIED</Text>
+          </View>
+        ) : isOwner && binder.is_public ? (
+          verifPending ? (
+            <View className="flex-row items-center gap-1.5 mt-2 bg-surface border border-subtle rounded-full px-3 py-1">
+              <Ionicons name="time-outline" size={12} color={colors.muted2} />
+              <Text className="text-muted-2 font-display-medium text-xs">Verification pending</Text>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() =>
+                router.push({ pathname: '/(app)/verify-binder', params: { binderId: binder.id, binderName: binder.name } })
+              }
+              className="flex-row items-center gap-1.5 mt-2 bg-primary/10 border border-primary rounded-full px-3.5 py-1.5 active:opacity-80"
+            >
+              <Ionicons name="shield-checkmark-outline" size={13} color={colors.primary} />
+              <Text className="text-primary font-display-semibold text-xs">Verify binder ✓</Text>
+            </Pressable>
+          )
+        ) : null}
       </View>
 
       {items.length === 0 ? (
@@ -322,20 +368,42 @@ export default function BinderDetailScreen() {
               onReorder={handleReorder}
               onRequestEdit={() => setEditing(true)}
               onDeleteItem={handleDeleteItem}
+              onItemPress={(item) =>
+                Alert.alert(item.card?.name ?? 'Card', undefined, [
+                  {
+                    text: 'Share as pull ✨',
+                    onPress: () =>
+                      router.push({
+                        pathname: '/(app)/share-pull',
+                        params: { cardId: item.card_id, binderItemId: item.id },
+                      }),
+                  },
+                  {
+                    text: 'View card',
+                    onPress: () => router.push({ pathname: '/(app)/card/[id]', params: { id: item.card_id } }),
+                  },
+                  { text: 'Cancel', style: 'cancel' },
+                ])
+              }
               renderItem={(item) => <CardFace item={item} width={tileW} height={tileH} />}
             />
           ) : (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              {items.map((item) => (
-                <Pressable
-                  key={item.id}
-                  onPress={() => router.push({ pathname: '/(app)/card/[id]', params: { id: item.card_id } })}
-                  className="active:opacity-80"
-                >
-                  <CardFace item={item} width={tileW} height={tileH} />
-                </Pressable>
-              ))}
-            </View>
+            // Read-only 3-col grid (same absolute layout as the owner grid, so it
+            // doesn't hit the flex-wrap exact-fit bug). Tap opens the card.
+            <DraggableCardGrid
+              items={items}
+              tileWidth={tileW}
+              tileHeight={tileH}
+              editing={false}
+              onReorder={() => {}}
+              onItemPress={(item) =>
+                router.push({
+                  pathname: '/(app)/binder-card',
+                  params: { cardId: item.card_id, ownerId: binder.user_id },
+                })
+              }
+              renderItem={(item) => <CardFace item={item} width={tileW} height={tileH} />}
+            />
           )}
 
           {isOwner && (
@@ -375,6 +443,17 @@ export default function BinderDetailScreen() {
           setRenameOpen(false)
         }}
         onCancel={() => setRenameOpen(false)}
+      />
+
+      <PullCelebration
+        visible={!!celebration}
+        card={celebration}
+        onShare={() => {
+          const c = celebration
+          setCelebration(null)
+          if (c) router.push({ pathname: '/(app)/share-pull', params: { cardId: c.id } })
+        }}
+        onDismiss={() => setCelebration(null)}
       />
 
       <ConfirmDialog

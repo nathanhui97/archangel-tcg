@@ -16,13 +16,13 @@ import { GetOnRadar } from '@/components/GetOnRadar'
 import { ComingSoonGames } from '@/components/ComingSoonGames'
 import { TradeFilterSheet, emptyTradeFilters, activeTradeFilterCount, type TradeFilters } from '@/components/TradeFilterSheet'
 import { ListedForTradeList } from '@/components/trade/ListedForTradeList'
-import { WishlistList } from '@/components/trade/WishlistList'
+import { WantlistList } from '@/components/trade/WantlistList'
 import { colors } from '@/lib/theme'
 
 // Only Gundam is live today; the nearby feeds are Gundam-only.
 const GAME: Game = 'gundam'
 
-type Segment = 'listed' | 'wishlist'
+type Segment = 'listed' | 'wantlist'
 
 export default function TradeScreen() {
   const router = useRouter()
@@ -89,7 +89,7 @@ export default function TradeScreen() {
       <View className="mx-5 flex-row bg-surface border border-subtle rounded-xl p-0.5">
         {([
           { key: 'listed', label: 'Listed for Trade' },
-          { key: 'wishlist', label: 'Wantlist' },
+          { key: 'wantlist', label: 'Wantlist' },
         ] as const).map((s) => {
           const active = segment === s.key
           return (
@@ -152,7 +152,7 @@ export default function TradeScreen() {
           wantedIds={wantedIds}
         />
       ) : (
-        <WishlistList
+        <WantlistList
           lat={lat}
           lng={lng}
           radiusKm={radiusKm}

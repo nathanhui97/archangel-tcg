@@ -1,6 +1,36 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
-import type { Game, NearbyCard, NearbyWantlistItem } from '@/types'
+import type { Game, NearbyCard, NearbyWantlistItem, NearbyBinder } from '@/types'
+
+/** Public binders from nearby traders (or shippers), for the Social tab. */
+export function useNearbyBinders(lat: number | null, lng: number | null, radiusKm: number) {
+  const [binders, setBinders] = useState<NearbyBinder[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const { data, error: rpcError } = await supabase.rpc('get_nearby_binders', {
+      p_lat: lat,
+      p_lng: lng,
+      p_radius_km: radiusKm,
+    })
+    if (rpcError) {
+      setError(rpcError.message)
+      setBinders([])
+    } else {
+      setBinders((data ?? []) as NearbyBinder[])
+    }
+    setLoading(false)
+  }, [lat, lng, radiusKm])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { binders, loading, error, refresh: load }
+}
 
 /**
  * The nearby RPCs don't return card attributes, so we fetch rarity/color/type
